@@ -4,7 +4,9 @@
  */
 
 import React from 'react';
-import { CircuitComponent, LogicState, Wire, WirePoint } from '../../types/circuit';
+import { CircuitComponent, LogicState, Wire } from '../../types/circuit';
+import { useCircuit } from '../../context/CircuitContext';
+import { THEME_PRESETS } from '../../theme/themes';
 
 interface WireRendererProps {
   wire: Wire;
@@ -31,6 +33,9 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
   onDelete,
   onBranchWire,
 }) => {
+  const { theme } = useCircuit();
+  const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
+
   // Find ports
   const fromPort = fromComponent.ports.find((p) => p.id === wire.fromPortId);
   const toPort = toComponent.ports.find((p) => p.id === wire.toPortId);
@@ -55,8 +60,17 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
     }
 
     if (routingMode === 'curved') {
-      const dx = Math.abs(end.x - start.x) * 0.5;
-      return `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`;
+      if (end.x > start.x + 15) {
+        // Forward stylish cubic bezier curve
+        const dx = Math.max(Math.abs(end.x - start.x) * 0.52, 35);
+        return `M ${start.x} ${start.y} C ${start.x + dx} ${start.y}, ${end.x - dx} ${end.y}, ${end.x} ${end.y}`;
+      } else {
+        // Smooth loop-back bezier curve
+        const dy = end.y - start.y;
+        const loopRadius = Math.max(Math.abs(dy) * 0.35, 45);
+        const loopY = dy >= 0 ? start.y - loopRadius : start.y + loopRadius;
+        return `M ${start.x} ${start.y} C ${start.x + 50} ${start.y}, ${start.x + 50} ${loopY}, ${(start.x + end.x) / 2} ${loopY} C ${end.x - 50} ${loopY}, ${end.x - 50} ${end.y}, ${end.x} ${end.y}`;
+      }
     }
 
     // Default Orthogonal routing (Manhattan with smooth middle junction)
@@ -72,13 +86,13 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
 
   const pathD = generatePath();
 
-  // Color coding based on digital state
-  let strokeColor = '#475569'; // 0 / Low: dark slate
+  // Color coding based on digital state and active theme
+  let strokeColor = '#334155'; // 0 / Low: dark slate
   let glowColor = 'none';
 
   if (state === 1) {
-    strokeColor = '#10b981'; // 1 / High: vibrant emerald
-    glowColor = 'rgba(16, 185, 129, 0.4)';
+    strokeColor = activeTheme.wireHighColor; // Vibrant theme high color
+    glowColor = activeTheme.wireGlowColor;
   } else if (state === 'Z') {
     strokeColor = '#d97706'; // High-Z: amber
   } else if (state === 'X') {
@@ -112,7 +126,7 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
           d={pathD}
           fill="none"
           stroke={glowColor}
-          strokeWidth={6}
+          strokeWidth={6.5}
           strokeLinecap="round"
           strokeLinejoin="round"
           className="pointer-events-none"
@@ -124,7 +138,7 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
         d={pathD}
         fill="none"
         stroke={strokeColor}
-        strokeWidth={isSelected ? 3.5 : 2.25}
+        strokeWidth={isSelected ? 3.5 : 2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
         className="transition-colors duration-150 pointer-events-none"
@@ -135,7 +149,7 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
         <path
           d={pathD}
           fill="none"
-          stroke="#a7f3d0"
+          stroke={activeTheme.secondaryColor}
           strokeWidth={2}
           strokeDasharray="6, 8"
           strokeLinecap="round"
@@ -143,7 +157,7 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
         />
       )}
 
-      {/* Floating Action Controls on Selected Wire: Branch Wire */}
+      {/* Floating Action Controls on Selected Wire */}
       {isSelected && (
         <g transform={`translate(${midPoint.x}, ${midPoint.y})`} className="select-none">
           {/* Branch Wire Button (+) */}

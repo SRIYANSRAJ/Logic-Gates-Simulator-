@@ -5,6 +5,31 @@
 
 export type LogicState = 0 | 1 | 'Z' | 'X'; // 0 = LOW, 1 = HIGH, Z = High-Z (floating), X = Contention/Error
 
+export type WireRoutingMode = 'orthogonal' | 'curved' | 'straight';
+
+export type ThemePreset =
+  | 'emerald' // Default Matrix Emerald
+  | 'cyberpunk' // Cyan & Neon Magenta
+  | 'cobalt' // Electric Blue
+  | 'amber' // Retro Phosphor Amber Gold
+  | 'crimson' // Ruby / Rose
+  | 'violet' // Deep Amethyst
+  | 'monochrome'; // Minimal Slate
+
+export interface ThemeConfig {
+  id: ThemePreset;
+  name: string;
+  description: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  wireHighColor: string;
+  wireGlowColor: string;
+  canvasBg: string;
+  panelBg: string;
+  borderTone: string;
+}
+
 export type ComponentCategory = 
   | 'GATES'
   | 'INPUTS'

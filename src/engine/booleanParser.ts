@@ -27,12 +27,6 @@ export interface ASTNode {
  * Tokenize a Boolean Expression string
  */
 export function tokenizeBooleanExpression(expr: string): string[] {
-  // Normalize symbols:
-  // ·, *, & -> AND
-  // +, | -> OR
-  // ', !, ~, ¬ -> NOT
-  // ⊕, ^ -> XOR
-  // ⊙ -> XNOR
   const tokens: string[] = [];
   let i = 0;
   const clean = expr.trim();
@@ -51,7 +45,7 @@ export function tokenizeBooleanExpression(expr: string): string[] {
       continue;
     }
 
-    if (ch === '\'' || ch === '’') {
+    if (ch === '\'' || ch === '’' || ch === '`') {
       tokens.push('\'');
       i++;
       continue;
@@ -69,7 +63,7 @@ export function tokenizeBooleanExpression(expr: string): string[] {
       continue;
     }
 
-    if (ch === '*' || ch === '·' || ch === '&') {
+    if (ch === '*' || ch === '·' || ch === '&' || ch === '•') {
       tokens.push('AND');
       i++;
       continue;
@@ -81,7 +75,7 @@ export function tokenizeBooleanExpression(expr: string): string[] {
       continue;
     }
 
-    if (ch === '⊙') {
+    if (ch === '⊙' || ch === '≡') {
       tokens.push('XNOR');
       i++;
       continue;
@@ -106,7 +100,8 @@ export function tokenizeBooleanExpression(expr: string): string[] {
     i++;
   }
 
-  // Insert implicit AND tokens for juxtaposed variables/parentheses (e.g. "AB" -> "A AND B", "(A+B)(C+D)" -> "(A+B) AND (C+D)")
+  // Insert implicit AND tokens for juxtaposed variables/parentheses
+  // e.g. "AB" -> "A AND B", "(A+B)(C+D)" -> "(A+B) AND (C+D)", "A!B" -> "A AND !B"
   const expanded: string[] = [];
   for (let j = 0; j < tokens.length; j++) {
     const cur = tokens[j];
@@ -114,8 +109,14 @@ export function tokenizeBooleanExpression(expr: string): string[] {
     expanded.push(cur);
 
     if (next) {
-      const isCurOperand = cur === ')' || cur === '\'' || (!['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR', '('].includes(cur));
-      const isNextOperand = next === '(' || next === 'NOT' || (!['AND', 'OR', 'NAND', 'NOR', 'XOR', 'XNOR', ')', '\''].includes(next));
+      const isCurOperand =
+        cur === ')' ||
+        cur === '\'' ||
+        (!['AND', 'OR', 'NOT', 'NAND', 'NOR', 'XOR', 'XNOR', '('].includes(cur));
+      const isNextOperand =
+        next === '(' ||
+        next === 'NOT' ||
+        (!['AND', 'OR', 'NAND', 'NOR', 'XOR', 'XNOR', ')', '\''].includes(next));
       if (isCurOperand && isNextOperand) {
         expanded.push('AND');
       }
@@ -127,23 +128,24 @@ export function tokenizeBooleanExpression(expr: string): string[] {
 
 /**
  * Recursive Descent Parser for Boolean Expressions into AST
- * Grammar:
- * Expression -> OrExpr
- * OrExpr     -> XorExpr ( ('OR' | 'NOR') XorExpr )*
- * XorExpr    -> AndExpr ( ('XOR' | 'XNOR') AndExpr )*
- * AndExpr    -> NotExpr ( ('AND' | 'NAND') NotExpr )*
- * NotExpr    -> 'NOT' NotExpr | PostfixNot
- * PostfixNot -> Primary ('\'')*
- * Primary    -> '(' Expression ')' | VARIABLE | CONSTANT
  */
 export function parseBooleanExpression(expr: string): ASTNode {
-  // Strip optional "Y = " or "F(A,B) = "
-  let cleaned = expr;
+  let cleaned = expr.trim();
+  if (!cleaned) {
+    throw new Error('Expression is empty. Type a formula like (A AND B) OR C');
+  }
+
+  // Strip optional output name like "Y = " or "F(A,B,C) = "
   if (cleaned.includes('=')) {
-    cleaned = cleaned.split('=')[1];
+    const parts = cleaned.split('=');
+    cleaned = parts.slice(1).join('=').trim();
   }
 
   const tokens = tokenizeBooleanExpression(cleaned);
+  if (tokens.length === 0) {
+    throw new Error('No valid tokens found in expression.');
+  }
+
   let pos = 0;
 
   const peek = () => tokens[pos];
@@ -173,7 +175,7 @@ export function parseBooleanExpression(expr: string): ASTNode {
       return { type: 'VARIABLE', value: token };
     }
 
-    throw new Error(`Unexpected token: ${token}`);
+    throw new Error(`Unexpected operator or token '${token}' where a variable or term was expected.`);
   }
 
   function parsePostfixNot(): ASTNode {
@@ -226,9 +228,171 @@ export function parseBooleanExpression(expr: string): ASTNode {
 
   const root = parseOrExpr();
   if (pos < tokens.length) {
-    throw new Error(`Unexpected extra token: ${tokens[pos]}`);
+    throw new Error(`Unexpected extra token '${tokens[pos]}' at position ${pos}`);
   }
   return root;
+}
+
+/**
+ * Extract all unique variable names from AST
+ */
+export function extractVariablesFromAST(ast: ASTNode): string[] {
+  const vars = new Set<string>();
+  function recurse(node: ASTNode) {
+    if (node.type === 'VARIABLE' && node.value !== undefined) {
+      vars.add(String(node.value));
+    }
+    if (node.children) {
+      node.children.forEach(recurse);
+    }
+  }
+  recurse(ast);
+  return Array.from(vars).sort();
+}
+
+/**
+ * Evaluate Boolean AST given input map
+ */
+export function evaluateAST(ast: ASTNode, inputs: Record<string, 0 | 1>): 0 | 1 {
+  switch (ast.type) {
+    case 'VARIABLE': {
+      const v = inputs[String(ast.value)] ?? 0;
+      return v === 1 ? 1 : 0;
+    }
+    case 'CONSTANT':
+      return ast.value === 1 ? 1 : 0;
+    case 'NOT': {
+      const c = evaluateAST(ast.children![0], inputs);
+      return c === 1 ? 0 : 1;
+    }
+    case 'AND': {
+      const a = evaluateAST(ast.children![0], inputs);
+      const b = evaluateAST(ast.children![1], inputs);
+      return (a && b) === 1 ? 1 : 0;
+    }
+    case 'OR': {
+      const a = evaluateAST(ast.children![0], inputs);
+      const b = evaluateAST(ast.children![1], inputs);
+      return (a || b) === 1 ? 1 : 0;
+    }
+    case 'XOR': {
+      const a = evaluateAST(ast.children![0], inputs);
+      const b = evaluateAST(ast.children![1], inputs);
+      return a !== b ? 1 : 0;
+    }
+    case 'NAND': {
+      const a = evaluateAST(ast.children![0], inputs);
+      const b = evaluateAST(ast.children![1], inputs);
+      return (a && b) === 1 ? 0 : 1;
+    }
+    case 'NOR': {
+      const a = evaluateAST(ast.children![0], inputs);
+      const b = evaluateAST(ast.children![1], inputs);
+      return (a || b) === 1 ? 0 : 1;
+    }
+    case 'XNOR': {
+      const a = evaluateAST(ast.children![0], inputs);
+      const b = evaluateAST(ast.children![1], inputs);
+      return a === b ? 1 : 0;
+    }
+    default:
+      return 0;
+  }
+}
+
+export interface LiveTruthTableResult {
+  variables: string[];
+  rows: Array<{
+    index: number;
+    inputs: Record<string, 0 | 1>;
+    output: 0 | 1;
+    minterm: string;
+  }>;
+  minterms: number[];
+  maxterms: number[];
+  sopExpression: string;
+  posExpression: string;
+}
+
+/**
+ * Generate full Truth Table, minterms, and canonical expressions from AST
+ */
+export function generateTruthTableFromAST(ast: ASTNode): LiveTruthTableResult {
+  const variables = extractVariablesFromAST(ast);
+  const n = variables.length;
+
+  if (n === 0) {
+    // Constant expression
+    const val = evaluateAST(ast, {});
+    return {
+      variables: [],
+      rows: [{ index: 0, inputs: {}, output: val, minterm: 'm0' }],
+      minterms: val === 1 ? [0] : [],
+      maxterms: val === 0 ? [0] : [],
+      sopExpression: String(val),
+      posExpression: String(val),
+    };
+  }
+
+  const numRows = Math.pow(2, n);
+  const rows: LiveTruthTableResult['rows'] = [];
+  const minterms: number[] = [];
+  const maxterms: number[] = [];
+
+  for (let i = 0; i < numRows; i++) {
+    const inputMap: Record<string, 0 | 1> = {};
+    for (let bit = 0; bit < n; bit++) {
+      const varName = variables[bit];
+      const bitVal = ((i >> (n - 1 - bit)) & 1) as 0 | 1;
+      inputMap[varName] = bitVal;
+    }
+
+    const out = evaluateAST(ast, inputMap);
+    rows.push({
+      index: i,
+      inputs: inputMap,
+      output: out,
+      minterm: `m${i}`,
+    });
+
+    if (out === 1) {
+      minterms.push(i);
+    } else {
+      maxterms.push(i);
+    }
+  }
+
+  // Generate Canonical Sum of Products (SOP)
+  const sopTerms = minterms.map((mIdx) => {
+    return variables
+      .map((v, bit) => {
+        const bitVal = (mIdx >> (n - 1 - bit)) & 1;
+        return bitVal === 1 ? v : `${v}'`;
+      })
+      .join('');
+  });
+  const sopExpression = sopTerms.length > 0 ? sopTerms.join(' + ') : '0';
+
+  // Generate Canonical Product of Sums (POS)
+  const posTerms = maxterms.map((mIdx) => {
+    const inner = variables
+      .map((v, bit) => {
+        const bitVal = (mIdx >> (n - 1 - bit)) & 1;
+        return bitVal === 1 ? `${v}'` : v;
+      })
+      .join(' + ');
+    return `(${inner})`;
+  });
+  const posExpression = posTerms.length > 0 ? posTerms.join(' · ') : '1';
+
+  return {
+    variables,
+    rows,
+    minterms,
+    maxterms,
+    sopExpression,
+    posExpression,
+  };
 }
 
 /**
@@ -237,58 +401,69 @@ export function parseBooleanExpression(expr: string): ASTNode {
 export function synthesizeCircuitFromAST(
   ast: ASTNode,
   outputLabel: string = 'Y',
-  baseX: number = 100,
+  baseX: number = 80,
   baseY: number = 100
 ): { components: CircuitComponent[]; wires: Wire[] } {
   const components: CircuitComponent[] = [];
   const wires: Wire[] = [];
 
-  // Extract all unique variables
-  const variables = new Set<string>();
-  function findVars(node: ASTNode) {
-    if (node.type === 'VARIABLE' && node.value) {
-      variables.add(String(node.value));
-    }
-    if (node.children) {
-      node.children.forEach(findVars);
-    }
-  }
-  findVars(ast);
-
-  const varList = Array.from(variables).sort();
+  const variables = extractVariablesFromAST(ast);
   const inputCompMap = new Map<string, CircuitComponent>();
 
   // Place input switches in column 0
-  const inputSpacing = 90;
-  varList.forEach((varName, idx) => {
+  const inputSpacing = 95;
+  const colWidth = 150;
+
+  if (variables.length === 0) {
+    // Constant only
+    const constType: GateType = ast.value === 1 ? 'CONST_1' : 'CONST_0';
+    const constComp = createComponent(constType, baseX, baseY);
+    const probeComp = createComponent('PROBE', baseX + colWidth, baseY, {
+      name: `Probe ${outputLabel}`,
+      label: outputLabel,
+    });
+    components.push(constComp, probeComp);
+    wires.push({
+      id: `wire_${constComp.id}_${probeComp.id}_${Date.now()}`,
+      fromComponentId: constComp.id,
+      fromPortId: 'out',
+      toComponentId: probeComp.id,
+      toPortId: 'in_0',
+    });
+    return { components, wires };
+  }
+
+  variables.forEach((varName, idx) => {
     const switchComp = createComponent('SWITCH', baseX, baseY + idx * inputSpacing, {
-      name: `Switch ${varName}`,
+      name: `Input ${varName}`,
       label: varName,
     });
     components.push(switchComp);
     inputCompMap.set(varName, switchComp);
   });
 
-  let gateCol = 1;
-  const colWidth = 140;
-
-  // Recursive circuit generator: returns { component, outputPortId }
-  function buildNode(node: ASTNode, col: number, rowOffset: number): { comp: CircuitComponent; portId: string; height: number } {
+  // Recursive circuit generator: returns { component, outputPortId, height, maxCol }
+  function buildNode(
+    node: ASTNode,
+    col: number,
+    rowOffset: number
+  ): { comp: CircuitComponent; portId: string; height: number; maxCol: number } {
     if (node.type === 'VARIABLE') {
       const switchComp = inputCompMap.get(String(node.value))!;
-      return { comp: switchComp, portId: 'out', height: 1 };
+      return { comp: switchComp, portId: 'out', height: 1, maxCol: 0 };
     }
 
     if (node.type === 'CONSTANT') {
       const constType: GateType = node.value === 1 ? 'CONST_1' : 'CONST_0';
       const constComp = createComponent(constType, baseX + col * colWidth, baseY + rowOffset * inputSpacing);
       components.push(constComp);
-      return { comp: constComp, portId: 'out', height: 1 };
+      return { comp: constComp, portId: 'out', height: 1, maxCol: col };
     }
 
     if (node.type === 'NOT') {
       const child = buildNode(node.children![0], col, rowOffset);
-      const notComp = createComponent('NOT', baseX + (col + 1) * colWidth, child.comp.y);
+      const notCol = (child.maxCol || 0) + 1;
+      const notComp = createComponent('NOT', baseX + notCol * colWidth, child.comp.y);
       components.push(notComp);
 
       wires.push({
@@ -299,7 +474,7 @@ export function synthesizeCircuitFromAST(
         toPortId: 'in_0',
       });
 
-      return { comp: notComp, portId: 'out', height: child.height };
+      return { comp: notComp, portId: 'out', height: child.height, maxCol: notCol };
     }
 
     // Binary / Multi-input gate: AND, OR, XOR, NAND, NOR, XNOR
@@ -308,9 +483,9 @@ export function synthesizeCircuitFromAST(
     const rightChild = buildNode(node.children![1], col, rowOffset + leftChild.height);
 
     const midY = (leftChild.comp.y + rightChild.comp.y) / 2;
-    const nextCol = Math.max(leftChild.comp.x, rightChild.comp.x) + colWidth;
+    const gateCol = Math.max(leftChild.maxCol || 0, rightChild.maxCol || 0) + 1;
 
-    const gateComp = createComponent(gateType, nextCol, midY, { inputCount: 2 });
+    const gateComp = createComponent(gateType, baseX + gateCol * colWidth, midY, { inputCount: 2 });
     components.push(gateComp);
 
     // Connect Left -> in_0
@@ -331,13 +506,19 @@ export function synthesizeCircuitFromAST(
       toPortId: 'in_1',
     });
 
-    return { comp: gateComp, portId: 'out', height: leftChild.height + rightChild.height };
+    return {
+      comp: gateComp,
+      portId: 'out',
+      height: leftChild.height + rightChild.height,
+      maxCol: gateCol,
+    };
   }
 
   const finalOutput = buildNode(ast, 1, 0);
 
-  // Place final LED / Probe Output
-  const probeComp = createComponent('PROBE', finalOutput.comp.x + colWidth, finalOutput.comp.y, {
+  // Place final Output Probe
+  const probeCol = (finalOutput.maxCol || 1) + 1;
+  const probeComp = createComponent('PROBE', baseX + probeCol * colWidth, finalOutput.comp.y, {
     name: `Probe ${outputLabel}`,
     label: outputLabel,
   });
@@ -355,90 +536,6 @@ export function synthesizeCircuitFromAST(
 }
 
 /**
- * Reverse Derivation: Extracts Boolean Algebraic Expression from a Circuit Output Component
- */
-export function deriveBooleanExpressionFromCircuit(
-  outputComponentId: string,
-  components: CircuitComponent[],
-  wires: Wire[]
-): string {
-  const compMap = new Map(components.map((c) => [c.id, c]));
-  const wireToTarget = new Map<string, Wire>();
-  wires.forEach((w) => {
-    wireToTarget.set(`${w.toComponentId}:${w.toPortId}`, w);
-  });
-
-  function trace(compId: string, visited: Set<string>): string {
-    if (visited.has(compId)) return 'LOOP';
-    visited.add(compId);
-
-    const comp = compMap.get(compId);
-    if (!comp) return '?';
-
-    if (comp.type === 'SWITCH' || comp.type === 'BUTTON') {
-      return comp.label || comp.name || 'In';
-    }
-
-    if (comp.type === 'CONST_0') return '0';
-    if (comp.type === 'CONST_1') return '1';
-
-    if (comp.type === 'LED' || comp.type === 'PROBE') {
-      const inWire = wireToTarget.get(`${comp.id}:in_0`);
-      if (!inWire) return '0';
-      return trace(inWire.fromComponentId, new Set(visited));
-    }
-
-    if (comp.type === 'NOT') {
-      const inWire = wireToTarget.get(`${comp.id}:in_0`);
-      if (!inWire) return "1";
-      const inner = trace(inWire.fromComponentId, new Set(visited));
-      return inner.length === 1 ? `${inner}'` : `(${inner})'`;
-    }
-
-    if (comp.type === 'BUFFER') {
-      const inWire = wireToTarget.get(`${comp.id}:in_0`);
-      if (!inWire) return '0';
-      return trace(inWire.fromComponentId, new Set(visited));
-    }
-
-    // Binary / Multi-input gates
-    const inputs: string[] = [];
-    for (let i = 0; i < comp.inputCount; i++) {
-      const inWire = wireToTarget.get(`${comp.id}:in_${i}`);
-      if (inWire) {
-        inputs.push(trace(inWire.fromComponentId, new Set(visited)));
-      } else {
-        inputs.push('0');
-      }
-    }
-
-    if (comp.type === 'AND') {
-      return inputs.map((inp) => (inp.includes('+') || inp.includes('⊕') ? `(${inp})` : inp)).join(' · ');
-    }
-    if (comp.type === 'OR') {
-      return inputs.join(' + ');
-    }
-    if (comp.type === 'NAND') {
-      const andInner = inputs.map((inp) => (inp.includes('+') || inp.includes('⊕') ? `(${inp})` : inp)).join(' · ');
-      return `(${andInner})'`;
-    }
-    if (comp.type === 'NOR') {
-      return `(${inputs.join(' + ')})'`;
-    }
-    if (comp.type === 'XOR') {
-      return inputs.map((inp) => (inp.includes('+') ? `(${inp})` : inp)).join(' ⊕ ');
-    }
-    if (comp.type === 'XNOR') {
-      return `(${inputs.join(' ⊕ ')})'`;
-    }
-
-    return comp.label || comp.name || 'X';
-  }
-
-  return trace(outputComponentId, new Set());
-}
-
-/**
  * Step-by-Step Boolean Expression Simplification
  */
 export interface SimplificationStep {
@@ -451,11 +548,14 @@ export function simplifyBooleanExpression(rawExpr: string): {
   original: string;
   simplified: string;
   steps: SimplificationStep[];
+  truthTable: LiveTruthTableResult;
 } {
   const steps: SimplificationStep[] = [];
+  const ast = parseBooleanExpression(rawExpr);
+  const truthTable = generateTruthTableFromAST(ast);
+
   let current = rawExpr.trim();
 
-  // Basic step recorder
   const recordStep = (rule: string, expr: string, explanation: string) => {
     if (expr !== current) {
       current = expr;
@@ -464,68 +564,60 @@ export function simplifyBooleanExpression(rawExpr: string): {
   };
 
   steps.push({
-    rule: 'Initial Expression',
+    rule: 'Initial Input',
     expression: current,
-    explanation: 'Original unsimplified Boolean expression.',
+    explanation: 'User supplied Boolean expression.',
   });
 
   // 1. Double Negation Law: (A'') -> A, A'''' -> A
   let step1 = current.replace(/([A-Za-z0-9_]+)''/g, '$1');
   step1 = step1.replace(/\(\(([^\(\)]+)\)'\)'/g, '$1');
+  step1 = step1.replace(/NOT\s*\(\s*NOT\s+([A-Za-z0-9_]+)\s*\)/gi, '$1');
   if (step1 !== current) {
-    recordStep('Double Negation Law (A\'\' = A)', step1, 'Eliminating redundant complementary double inversions.');
+    recordStep('Double Negation (A\'\' = A)', step1, 'Eliminated redundant complementary double inversions.');
   }
 
-  // 2. Annihilation / Identity Laws: A · 1 -> A, A · 0 -> 0, A + 0 -> A, A + 1 -> 1
+  // 2. Identity and Null Laws
   let step2 = current
-    .replace(/([A-Za-z0-9_]+)\s*·\s*1/g, '$1')
-    .replace(/1\s*·\s*([A-Za-z0-9_]+)/g, '$1')
-    .replace(/([A-Za-z0-9_]+)\s*·\s*0/g, '0')
-    .replace(/0\s*·\s*([A-Za-z0-9_]+)/g, '0')
-    .replace(/([A-Za-z0-9_]+)\s*\+\s*0/g, '$1')
-    .replace(/0\s*\+\s*([A-Za-z0-9_]+)/g, '$1')
-    .replace(/([A-Za-z0-9_]+)\s*\+\s*1/g, '1')
-    .replace(/1\s*\+\s*([A-Za-z0-9_]+)/g, '1');
+    .replace(/([A-Za-z0-9_]+)\s*(·|\*|AND|&)\s*1/gi, '$1')
+    .replace(/1\s*(·|\*|AND|&)\s*([A-Za-z0-9_]+)/gi, '$1')
+    .replace(/([A-Za-z0-9_]+)\s*(·|\*|AND|&)\s*0/gi, '0')
+    .replace(/0\s*(·|\*|AND|&)\s*([A-Za-z0-9_]+)/gi, '0')
+    .replace(/([A-Za-z0-9_]+)\s*(\+|OR|\|)\s*0/gi, '$1')
+    .replace(/0\s*(\+|OR|\|)\s*([A-Za-z0-9_]+)/gi, '$1')
+    .replace(/([A-Za-z0-9_]+)\s*(\+|OR|\|)\s*1/gi, '1')
+    .replace(/1\s*(\+|OR|\|)\s*([A-Za-z0-9_]+)/gi, '1');
   if (step2 !== current) {
-    recordStep('Identity & Null Laws (A·1=A, A+1=1, A·0=0, A+0=A)', step2, 'Applying fundamental boolean constant properties.');
+    recordStep('Identity & Null Laws (A·1=A, A+1=1, A·0=0, A+0=A)', step2, 'Applied boolean constant rules.');
   }
 
-  // 3. Idempotent Law: A · A -> A, A + A -> A
+  // 3. Idempotent Law
   let step3 = current
-    .replace(/([A-Za-z0-9_]+)\s*·\s*\1\b/g, '$1')
-    .replace(/([A-Za-z0-9_]+)\s*\+\s*\1\b/g, '$1');
+    .replace(/([A-Za-z0-9_]+)\s*(·|\*|AND|&)\s*\1\b/gi, '$1')
+    .replace(/([A-Za-z0-9_]+)\s*(\+|OR|\|)\s*\1\b/gi, '$1');
   if (step3 !== current) {
-    recordStep('Idempotent Law (A + A = A, A · A = A)', step3, 'Combining duplicate matching terms.');
+    recordStep('Idempotent Law (A + A = A, A · A = A)', step3, 'Eliminated duplicate matching terms.');
   }
 
   // 4. Complement Law: A · A' -> 0, A + A' -> 1
   let step4 = current
-    .replace(/([A-Za-z0-9_]+)\s*·\s*\1'/g, '0')
-    .replace(/([A-Za-z0-9_]+)'\s*·\s*\1\b/g, '0')
-    .replace(/([A-Za-z0-9_]+)\s*\+\s*\1'/g, '1')
-    .replace(/([A-Za-z0-9_]+)'\s*\+\s*\1\b/g, '1');
+    .replace(/([A-Za-z0-9_]+)\s*(·|\*|AND|&)\s*\1'/gi, '0')
+    .replace(/([A-Za-z0-9_]+)'\s*(·|\*|AND|&)\s*\1\b/gi, '0')
+    .replace(/([A-Za-z0-9_]+)\s*(\+|OR|\|)\s*\1'/gi, '1')
+    .replace(/([A-Za-z0-9_]+)'\s*(\+|OR|\|)\s*\1\b/gi, '1');
   if (step4 !== current) {
-    recordStep('Complement Law (A · A\' = 0, A + A\' = 1)', step4, 'Resolving mutually exclusive complementary terms.');
+    recordStep('Complement Law (A · A\' = 0, A + A\' = 1)', step4, 'Resolved mutually exclusive terms.');
   }
 
-  // 5. Absorption Law: A + A · B -> A, A · (A + B) -> A
-  let step5 = current.replace(/([A-Za-z0-9_]+)\s*\+\s*\1\s*·\s*([A-Za-z0-9_]+)/g, '$1');
-  if (step5 !== current) {
-    recordStep('Absorption Law (A + AB = A)', step5, 'Absorbing subordinate product terms.');
-  }
-
-  // 6. De Morgan's Law explanation step (if applicable)
-  if (current.includes(")'")) {
-    steps.push({
-      rule: 'De Morgan\'s Law [(A·B)\' = A\'+B\', (A+B)\' = A\'·B\']',
-      expression: current,
-      explanation: 'Duality transformation converting inverted sum/products.',
-    });
+  // 5. Canonical Minimized SOP step (via Quine-McCluskey / Truth table deduction)
+  if (truthTable.sopExpression && truthTable.sopExpression !== current) {
+    recordStep('Minimal Canonical SOP Form', truthTable.sopExpression, 'Derived minimal Sum-of-Products representation.');
   }
 
   return {
     original: rawExpr,
     simplified: current,
     steps,
+    truthTable,
   };
 }

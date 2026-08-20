@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useCircuit } from '../../context/CircuitContext';
 import { COMPONENT_METADATA } from '../../engine/componentFactory';
+import { THEME_PRESETS } from '../../theme/themes';
 import {
   Box,
   Copy,
@@ -20,6 +21,11 @@ import {
   Trash2,
   X,
   Zap,
+  Spline,
+  CornerDownRight,
+  Minus,
+  Palette,
+  Settings,
 } from 'lucide-react';
 
 export const Inspector: React.FC = () => {
@@ -41,6 +47,9 @@ export const Inspector: React.FC = () => {
     setActiveModal,
     inspectorOpen,
     setInspectorOpen,
+    wireRoutingMode,
+    setWireRoutingMode,
+    theme,
   } = useCircuit();
 
   const selectedComps = components.filter((c) => selection.componentIds.includes(c.id));
@@ -48,6 +57,8 @@ export const Inspector: React.FC = () => {
   const totalSelected = selectedComps.length + selectedWires.length;
 
   if (!inspectorOpen) return null;
+
+  const currentTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
 
   const renderContent = () => {
     // 1. Wire Selected
@@ -91,6 +102,49 @@ export const Inspector: React.FC = () => {
             <div className="flex justify-between">
               <span className="text-slate-400">Selected Wires:</span>
               <span className="font-bold text-slate-200 font-mono">{selectedWires.length}</span>
+            </div>
+          </div>
+
+          {/* Wire Routing Style Picker */}
+          <div className="space-y-1.5 pt-1">
+            <div className="text-[11px] text-slate-400 font-medium">Wire Routing Style</div>
+            <div className="grid grid-cols-3 gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
+              <button
+                onClick={() => setWireRoutingMode('curved')}
+                className={`py-1.5 px-2 rounded flex flex-col items-center gap-1 transition-all ${
+                  wireRoutingMode === 'curved'
+                    ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Curved / Stylish Bezier Wires"
+              >
+                <Spline className="w-3.5 h-3.5" />
+                <span className="text-[10px]">Curved</span>
+              </button>
+              <button
+                onClick={() => setWireRoutingMode('orthogonal')}
+                className={`py-1.5 px-2 rounded flex flex-col items-center gap-1 transition-all ${
+                  wireRoutingMode === 'orthogonal'
+                    ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Orthogonal / 90° Manhattan Wires"
+              >
+                <CornerDownRight className="w-3.5 h-3.5" />
+                <span className="text-[10px]">Orthogonal</span>
+              </button>
+              <button
+                onClick={() => setWireRoutingMode('straight')}
+                className={`py-1.5 px-2 rounded flex flex-col items-center gap-1 transition-all ${
+                  wireRoutingMode === 'straight'
+                    ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Straight Lines"
+              >
+                <Minus className="w-3.5 h-3.5" />
+                <span className="text-[10px]">Straight</span>
+              </button>
             </div>
           </div>
 
@@ -364,6 +418,64 @@ export const Inspector: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Wire Style Quick Switcher */}
+        <div className="space-y-1.5">
+          <div className="text-[11px] text-slate-400 font-medium">Wire Routing Style</div>
+          <div className="grid grid-cols-3 gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
+            <button
+              onClick={() => setWireRoutingMode('curved')}
+              className={`py-1.5 px-2 rounded flex flex-col items-center gap-1 transition-all ${
+                wireRoutingMode === 'curved'
+                  ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Curved / Stylish Bezier Wires"
+            >
+              <Spline className="w-3.5 h-3.5" />
+              <span className="text-[10px]">Curved</span>
+            </button>
+            <button
+              onClick={() => setWireRoutingMode('orthogonal')}
+              className={`py-1.5 px-2 rounded flex flex-col items-center gap-1 transition-all ${
+                wireRoutingMode === 'orthogonal'
+                  ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Orthogonal / 90° Manhattan Wires"
+            >
+              <CornerDownRight className="w-3.5 h-3.5" />
+              <span className="text-[10px]">Orthogonal</span>
+            </button>
+            <button
+              onClick={() => setWireRoutingMode('straight')}
+              className={`py-1.5 px-2 rounded flex flex-col items-center gap-1 transition-all ${
+                wireRoutingMode === 'straight'
+                  ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Straight Lines"
+            >
+              <Minus className="w-3.5 h-3.5" />
+              <span className="text-[10px]">Straight</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Theme & Settings Quick Launcher */}
+        <button
+          onClick={() => setActiveModal('settings')}
+          className="w-full flex items-center justify-between p-2.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-200 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Palette className="w-4 h-4 text-emerald-400" />
+            <div className="text-left">
+              <div className="font-semibold text-xs text-slate-200">Theme & Preferences</div>
+              <div className="text-[10px] text-slate-400">Current: {currentTheme.name}</div>
+            </div>
+          </div>
+          <Settings className="w-4 h-4 text-slate-400" />
+        </button>
 
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2">
           <div className="flex justify-between">

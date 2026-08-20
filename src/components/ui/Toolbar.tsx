@@ -32,6 +32,9 @@ import {
   Undo2,
   Upload,
   Zap,
+  Settings,
+  Spline,
+  Palette,
 } from 'lucide-react';
 
 export const Toolbar: React.FC = () => {
@@ -339,25 +342,19 @@ export const Toolbar: React.FC = () => {
           </button>
         </div>
 
-        {/* Wire Style Toggle */}
-        <div className="hidden xl:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs text-slate-400">
+        {/* Wire Style Toggle (Curved stylish vs Orthogonal) - visible on tablets and desktop */}
+        <div className="hidden md:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs text-slate-400">
           <button
             onClick={() => setWireRoutingMode(wireRoutingMode === 'orthogonal' ? 'curved' : 'orthogonal')}
-            className={`px-2 py-1 rounded transition-colors text-[11px] font-semibold ${
-              wireRoutingMode === 'orthogonal' ? 'bg-slate-800 text-emerald-400' : 'hover:text-slate-200'
+            className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors text-[11px] font-semibold ${
+              wireRoutingMode === 'curved'
+                ? 'bg-cyan-500/20 text-cyan-300 font-bold'
+                : 'hover:text-slate-200 text-slate-400'
             }`}
-            title="Toggle Wire Routing: Orthogonal vs Curved"
+            title="Switch wire style between Orthogonal (90°) and Curved (Stylish Bezier)"
           >
-            {wireRoutingMode === 'orthogonal' ? 'Orthogonal' : 'Curved'}
-          </button>
-          <button
-            onClick={() => setSignalAnimation(!signalAnimation)}
-            className={`p-1.5 rounded transition-colors ${
-              signalAnimation ? 'bg-slate-800 text-emerald-400' : 'hover:text-slate-200'
-            }`}
-            title="Toggle Signal Flow Animation"
-          >
-            <Activity className="w-3.5 h-3.5" />
+            <Spline className="w-3.5 h-3.5" />
+            <span>{wireRoutingMode === 'curved' ? 'Curved Wires' : 'Orthogonal'}</span>
           </button>
         </div>
 
@@ -378,7 +375,7 @@ export const Toolbar: React.FC = () => {
             title="Boolean Algebra & Synthesis"
           >
             <FileCode2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Boolean</span>
+            <span>Boolean Solver</span>
           </button>
 
           <button
@@ -409,6 +406,15 @@ export const Toolbar: React.FC = () => {
           </button>
         </div>
 
+        {/* Settings Button */}
+        <button
+          onClick={() => setActiveModal('settings')}
+          className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-400 transition-colors"
+          title="Settings, Themes & Wire Options"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
+
         {/* Permanent '...' / All Features Dropdown Menu (Accessible on all screen sizes & fullscreen) */}
         <div className="relative">
           <button
@@ -433,6 +439,33 @@ export const Toolbar: React.FC = () => {
                 <span className="text-[9px] text-slate-500">Quick Access</span>
               </div>
               <button
+                onClick={() => setActiveModal('settings')}
+                className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-800/80 text-left rounded-lg text-emerald-400 bg-emerald-500/10 transition-colors font-semibold"
+              >
+                <Settings className="w-4 h-4 text-emerald-400" />
+                <div>
+                  <div>Settings, Themes & Wires</div>
+                  <div className="text-[10px] text-slate-400">Color themes, curved wires & simulation</div>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setWireRoutingMode(wireRoutingMode === 'orthogonal' ? 'curved' : 'orthogonal');
+                  setToolsDropdownOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-800/80 text-left rounded-lg text-cyan-300 hover:text-cyan-200 transition-colors"
+              >
+                <Spline className="w-4 h-4 text-cyan-400" />
+                <div>
+                  <div className="font-semibold">
+                    Toggle Wire Style: {wireRoutingMode === 'orthogonal' ? 'Curved' : 'Orthogonal'}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Switch between 90° Manhattan and fluid bezier curves
+                  </div>
+                </div>
+              </button>
+              <button
                 onClick={() => setActiveModal('truthTable')}
                 className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-800/80 text-left rounded-lg text-slate-200 hover:text-emerald-400 transition-colors"
               >
@@ -449,7 +482,7 @@ export const Toolbar: React.FC = () => {
                 <FileCode2 className="w-4 h-4 text-cyan-400" />
                 <div>
                   <div className="font-semibold">Boolean Solver & Synthesis</div>
-                  <div className="text-[10px] text-slate-400">Canonical SOP/POS expressions</div>
+                  <div className="text-[10px] text-slate-400">Live as-you-type circuit synthesis & derivation</div>
                 </div>
               </button>
               <button

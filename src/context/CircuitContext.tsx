@@ -14,11 +14,15 @@ import {
   SimulationState,
   TimingSample,
   Wire,
+  ThemePreset,
+  WireRoutingMode,
 } from '../types/circuit';
 import { createComponent, generateComponentPorts } from '../engine/componentFactory';
 import { CHALLENGES } from '../engine/challenges';
 import { getPresetCircuits, PresetCircuit } from '../engine/presets';
 import { simulateCircuit } from '../engine/simulation';
+import { parseBooleanExpression, synthesizeCircuitFromAST } from '../engine/booleanParser';
+import { THEME_PRESETS } from '../theme/themes';
 
 export type ActiveModalType =
   | 'none'
@@ -32,7 +36,8 @@ export type ActiveModalType =
   | 'challenges'
   | 'oscilloscope'
   | 'shortcuts'
-  | 'savedCircuits';
+  | 'savedCircuits'
+  | 'settings';
 
 interface SelectionState {
   componentIds: string[];
@@ -57,7 +62,8 @@ interface CircuitContextType {
     currentX: number;
     currentY: number;
   } | null;
-  wireRoutingMode: 'orthogonal' | 'curved' | 'straight';
+  wireRoutingMode: WireRoutingMode;
+  theme: ThemePreset;
   signalAnimation: boolean;
   snapToGrid: boolean;
   gridSize: number;
@@ -78,7 +84,8 @@ interface CircuitContextType {
   toggleInspector: () => void;
   setActiveTool: (tool: 'select' | 'pan' | 'wire' | 'delete') => void;
   setActiveModal: (modal: ActiveModalType) => void;
-  setWireRoutingMode: (mode: 'orthogonal' | 'curved' | 'straight') => void;
+  setWireRoutingMode: (mode: WireRoutingMode) => void;
+  setTheme: (theme: ThemePreset) => void;
   setSignalAnimation: (enabled: boolean) => void;
   setSnapToGrid: (snap: boolean) => void;
   setSimulationSpeedHz: (hz: number) => void;
@@ -126,12 +133,16 @@ interface CircuitContextType {
   fitToScreen: () => void;
   exportJson: () => string;
   importJson: (jsonStr: string) => boolean;
+  synthesizeAndLoadExpression: (expr: string, mode?: 'replace' | 'insert') => { success: boolean; error?: string };
+  loadCircuitData: (components: CircuitComponent[], wires: Wire[], name?: string) => void;
 }
 
 const CircuitContext = createContext<CircuitContextType | null>(null);
 
 const STORAGE_KEY = 'digilogic_circuit_autosave_v1';
 const CUSTOM_GATES_KEY = 'digilogic_custom_gates_v1';
+const THEME_STORAGE_KEY = 'digilogic_theme_v1';
+const ROUTING_STORAGE_KEY = 'digilogic_routing_mode_v1';
 
 export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Primary State
@@ -151,7 +162,49 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Viewport & UI state
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
   const [activeTool, setActiveTool] = useState<'select' | 'pan' | 'wire' | 'delete'>('select');
-  const [wireRoutingMode, setWireRoutingMode] = useState<'orthogonal' | 'curved' | 'straight'>('orthogonal');
+  const [wireRoutingMode, setWireRoutingModeState] = useState<WireRoutingMode>(() => {
+    try {
+      const saved = localStorage.getItem(ROUTING_STORAGE_KEY);
+      if (saved === 'orthogonal' || saved === 'curved' || saved === 'straight') {
+        return saved;
+      }
+    } catch (_) {}
+    return 'orthogonal';
+  });
+
+  const setWireRoutingMode = useCallback((mode: WireRoutingMode) => {
+    setWireRoutingModeState(mode);
+    try {
+      localStorage.setItem(ROUTING_STORAGE_KEY, mode);
+    } catch (_) {}
+  }, []);
+
+  // Theme preset state (defaults to Matrix Emerald)
+  const [theme, setThemeState] = useState<ThemePreset>(() => {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved && Object.keys(THEME_PRESETS).includes(saved)) {
+        return saved as ThemePreset;
+      }
+    } catch (_) {}
+    return 'emerald';
+  });
+
+  const setTheme = useCallback((newTheme: ThemePreset) => {
+    setThemeState(newTheme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      document.documentElement.setAttribute('data-theme', newTheme);
+    } catch (_) {}
+  }, []);
+
+  // Apply theme to document element
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (_) {}
+  }, [theme]);
+
   const [signalAnimation, setSignalAnimation] = useState<boolean>(true);
   const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
   const gridSize = 20;
@@ -1078,6 +1131,73 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [components, wires, circuitName, camera, recordHistory]
   );
 
+  const loadCircuitData = useCallback(
+    (newComps: CircuitComponent[], newWires: Wire[], name?: string) => {
+      recordHistory(components, wires);
+      const sanitizedComps = newComps.map((c) => {
+        if (!c.ports || c.ports.length === 0) {
+          const generatedPorts = generateComponentPorts(c.type, c.inputCount || 2, undefined);
+          return { ...c, ports: generatedPorts };
+        }
+        return c;
+      });
+
+      setComponents(sanitizedComps);
+      setWires(newWires);
+      if (name) setCircuitName(name);
+      setSelection({ componentIds: [], wireIds: [] });
+
+      // Automatically frame / fit camera to circuit
+      if (sanitizedComps.length > 0) {
+        const minX = Math.min(...sanitizedComps.map((c) => c.x));
+        const maxX = Math.max(...sanitizedComps.map((c) => c.x + 100));
+        const minY = Math.min(...sanitizedComps.map((c) => c.y));
+        const maxY = Math.max(...sanitizedComps.map((c) => c.y + 60));
+        const cX = (minX + maxX) / 2;
+        const cY = (minY + maxY) / 2;
+        const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+        const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+        setCamera({
+          x: vw / 2 - cX,
+          y: vh / 2 - cY,
+          zoom: 1,
+        });
+      }
+    },
+    [components, wires, recordHistory]
+  );
+
+  const synthesizeAndLoadExpression = useCallback(
+    (expr: string, mode: 'replace' | 'insert' = 'replace'): { success: boolean; error?: string } => {
+      try {
+        const ast = parseBooleanExpression(expr);
+        const startX =
+          mode === 'insert' && components.length > 0
+            ? Math.max(...components.map((c) => c.x)) + 200
+            : 100;
+        const startY = 100;
+        const { components: synthComps, wires: synthWires } = synthesizeCircuitFromAST(
+          ast,
+          'Y',
+          startX,
+          startY
+        );
+
+        if (mode === 'replace') {
+          loadCircuitData(synthComps, synthWires, `Synthesized: ${expr}`);
+        } else {
+          recordHistory(components, wires);
+          setComponents((prev) => [...prev, ...synthComps]);
+          setWires((prev) => [...prev, ...synthWires]);
+        }
+        return { success: true };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Failed to synthesize expression' };
+      }
+    },
+    [components, wires, recordHistory, loadCircuitData]
+  );
+
   return (
     <CircuitContext.Provider
       value={{
@@ -1092,6 +1212,7 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
         activeTool,
         wireDraft,
         wireRoutingMode,
+        theme,
         signalAnimation,
         snapToGrid,
         gridSize,
@@ -1112,6 +1233,7 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setActiveTool,
         setActiveModal,
         setWireRoutingMode,
+        setTheme,
         setSignalAnimation,
         setSnapToGrid,
         setSimulationSpeedHz,
@@ -1159,6 +1281,8 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
         fitToScreen,
         exportJson,
         importJson,
+        synthesizeAndLoadExpression,
+        loadCircuitData,
       }}
     >
       {children}

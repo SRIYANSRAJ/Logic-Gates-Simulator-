@@ -1,0 +1,8 @@
+{
+  "name": "Digital Logic Gate Simulator",
+  "description": "Modern real-time digital logic gate simulation engine, circuit designer, Boolean algebra analyzer, and educational laboratory.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

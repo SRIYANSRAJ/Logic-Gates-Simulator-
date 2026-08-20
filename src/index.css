@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@layer utilities {
+  @keyframes wireFlow {
+    from {
+      stroke-dashoffset: 28;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .animate-wire-flow {
+    animation: wireFlow 0.8s linear infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+/* Custom sleek dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #090d16;
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}

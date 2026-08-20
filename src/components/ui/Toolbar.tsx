@@ -11,6 +11,7 @@ import {
   Award,
   BookOpen,
   Check,
+  Compass,
   Cpu,
   Database,
   Download,
@@ -363,6 +364,17 @@ export const Toolbar: React.FC = () => {
           <span className="hidden md:inline">Saved Circuits</span>
         </button>
 
+        {/* Quick Tutorial / Guide Button */}
+        <button
+          id="navbar-tutorial-btn"
+          onClick={() => setActiveModal('tutorial')}
+          className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-bold transition-colors shadow-sm"
+          title="Interactive User Guide & Touch Controls Tutorial"
+        >
+          <Compass className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="hidden lg:inline">Tutorial</span>
+        </button>
+
         {/* Undo / Redo on Desktop / Tablet */}
         <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
           <button
@@ -479,6 +491,19 @@ export const Toolbar: React.FC = () => {
                 <span>⚡ All Circuit Features</span>
                 <span className="text-[9px] text-slate-500">Quick Access</span>
               </div>
+              <button
+                onClick={() => {
+                  setActiveModal('tutorial');
+                  setToolsDropdownOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-800/80 text-left rounded-lg text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 transition-colors font-semibold"
+              >
+                <Compass className="w-4 h-4 text-cyan-400" />
+                <div>
+                  <div className="font-semibold">Quick Start Guide & Tutorial</div>
+                  <div className="text-[10px] text-slate-400">PC mouse & tablet touch controls overview</div>
+                </div>
+              </button>
               <button
                 onClick={() => setActiveModal('settings')}
                 className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-800/80 text-left rounded-lg text-emerald-400 bg-emerald-500/10 transition-colors font-semibold"

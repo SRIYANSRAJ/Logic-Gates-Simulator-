@@ -20,6 +20,7 @@ import { EducationalModal } from './components/modals/EducationalModal';
 import { ShortcutHelpModal } from './components/modals/ShortcutHelpModal';
 import { SavedCircuitsModal } from './components/modals/SavedCircuitsModal';
 import { SettingsModal } from './components/modals/SettingsModal';
+import { TutorialModal } from './components/modals/TutorialModal';
 
 const CircuitAppContent: React.FC = () => {
   const { importJson, sidebarOpen, setSidebarOpen, inspectorOpen, setInspectorOpen, activeModal } = useCircuit();
@@ -87,6 +88,7 @@ const CircuitAppContent: React.FC = () => {
       {activeModal === 'shortcuts' && <ShortcutHelpModal />}
       {activeModal === 'savedCircuits' && <SavedCircuitsModal />}
       {activeModal === 'settings' && <SettingsModal />}
+      {activeModal === 'tutorial' && <TutorialModal />}
     </div>
   );
 };

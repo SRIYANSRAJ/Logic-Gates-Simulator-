@@ -26,6 +26,7 @@ import { THEME_PRESETS } from '../theme/themes';
 
 export type ActiveModalType =
   | 'none'
+  | 'tutorial'
   | 'truthTable'
   | 'boolean'
   | 'kmap'
@@ -308,6 +309,18 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setComponents(defaultPreset.components);
     setWires(defaultPreset.wires);
     setCircuitName(defaultPreset.name);
+
+    // Auto-open tutorial on first-ever visit
+    try {
+      const tutorialSeen = localStorage.getItem('digilogic_tutorial_seen');
+      if (!tutorialSeen) {
+        setTimeout(() => {
+          setActiveModal('tutorial');
+        }, 500);
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   // Autosave locally on state changes

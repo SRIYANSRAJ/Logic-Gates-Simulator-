@@ -275,25 +275,52 @@ export const Toolbar: React.FC = () => {
 
         {/* Right: Actions, Modals & Inspector Toggle */}
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        {/* Undo / Redo / Clear on Desktop / Tablet */}
+        {/* Unified Delete Button (Prominently integrated for BOTH PC and Mobile) */}
+        {(() => {
+          const totalSelected = selection.wireIds.length + selection.componentIds.length;
+          const hasSelection = totalSelected > 0;
+          return (
+            <button
+              id="navbar-delete-btn"
+              onClick={() => {
+                if (hasSelection) {
+                  deleteSelection();
+                } else {
+                  clearCanvas();
+                }
+              }}
+              className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
+                hasSelection
+                  ? 'bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/40 shadow-rose-950/50 animate-pulse'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800'
+              }`}
+              title={
+                hasSelection
+                  ? `Delete ${totalSelected} selected item(s) [Del / Backspace]`
+                  : 'Delete / Clear Canvas'
+              }
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">
+                {hasSelection ? `Delete (${totalSelected})` : 'Delete'}
+              </span>
+            </button>
+          );
+        })()}
+
+        {/* Saved Circuits Modal Launcher (Local Storage Library) */}
+        <button
+          id="navbar-saved-circuits-btn"
+          onClick={() => setActiveModal('savedCircuits')}
+          className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-colors"
+          title="Saved Circuits & Local Storage Manager"
+        >
+          <Database className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden md:inline">Saved Circuits</span>
+        </button>
+
+        {/* Undo / Redo on Desktop / Tablet */}
         <div className="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
-          <button
-            onClick={() => {
-              clearCanvas();
-            }}
-            className="p-1.5 rounded text-rose-400 hover:text-rose-300 hover:bg-slate-800 transition-colors border-r border-slate-800/50 mr-0.5 pr-2"
-            title="Clear Canvas"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={deleteSelection}
-            disabled={selection.wireIds.length === 0 && selection.componentIds.length === 0}
-            className="p-1.5 rounded text-rose-400 hover:text-rose-300 hover:bg-slate-800 transition-colors disabled:opacity-30 border-r border-slate-800/50 mr-0.5 pr-2"
-            title="Delete Selected Items"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
           <button
             onClick={undo}
             disabled={!canUndo}
@@ -398,7 +425,7 @@ export const Toolbar: React.FC = () => {
 
           {toolsDropdownOpen && (
             <div
-              className="absolute right-0 top-full mt-2 w-64 bg-[#0d1527] border border-slate-700/90 rounded-xl shadow-2xl p-2 z-50 text-xs text-slate-200 space-y-1 backdrop-blur-xl animate-fade-in"
+              className="absolute right-0 top-full mt-2 w-72 bg-[#0d1527] border border-slate-700/90 rounded-xl shadow-2xl p-2 z-50 text-xs text-slate-200 space-y-1 backdrop-blur-xl animate-fade-in touch-auto max-h-[85vh] overflow-y-auto overscroll-contain"
               onClick={() => setToolsDropdownOpen(false)}
             >
               <div className="px-2 py-1 text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
@@ -451,6 +478,13 @@ export const Toolbar: React.FC = () => {
                 Library & Learning
               </div>
               <button
+                onClick={() => setActiveModal('savedCircuits')}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors font-semibold"
+              >
+                <Database className="w-4 h-4 text-emerald-400" />
+                <span>Saved Circuits Manager (Local Storage)</span>
+              </button>
+              <button
                 onClick={() => setActiveModal('presets')}
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-slate-200 hover:text-blue-400 transition-colors"
               >
@@ -474,36 +508,31 @@ export const Toolbar: React.FC = () => {
 
               <div className="h-px bg-slate-800 my-1" />
               <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Edit Controls
+                Edit & Wire Controls
               </div>
               <button
-                onClick={() => { clearCanvas(); setToolsDropdownOpen(false); }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-rose-400 transition-colors"
+                onClick={() => {
+                  deleteSelection();
+                  setToolsDropdownOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-rose-500/20 text-left rounded-lg text-rose-400 transition-colors font-semibold"
+              >
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>
+                  Delete Selected Items (
+                  {selection.wireIds.length + selection.componentIds.length})
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  clearCanvas();
+                  setToolsDropdownOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-rose-300 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Clear Canvas</span>
               </button>
-              <button
-                onClick={() => { undo(); setToolsDropdownOpen(false); }}
-                disabled={!canUndo}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-slate-200 disabled:opacity-30 transition-colors"
-              >
-                <Undo2 className="w-4 h-4" />
-                <span>Undo</span>
-              </button>
-              <button
-                onClick={() => { redo(); setToolsDropdownOpen(false); }}
-                disabled={!canRedo}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-slate-200 disabled:opacity-30 transition-colors"
-              >
-                <Redo2 className="w-4 h-4" />
-                <span>Redo</span>
-              </button>
-
-              <div className="h-px bg-slate-800 my-1" />
-              <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Wire & Selection Controls
-              </div>
               <button
                 onClick={() => {
                   selectAllWires();
@@ -514,36 +543,33 @@ export const Toolbar: React.FC = () => {
                 <Zap className="w-4 h-4 text-emerald-400" />
                 <span>Select All Wires ({wires.length})</span>
               </button>
-              {(selection.wireIds.length > 0 || selection.componentIds.length > 0) && (
-                <button
-                  onClick={() => {
-                    deleteSelection();
-                    setToolsDropdownOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-rose-500/20 text-left rounded-lg text-rose-400 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4 text-rose-400" />
-                  <span>Delete Selected ({selection.wireIds.length + selection.componentIds.length})</span>
-                </button>
-              )}
+              <button
+                onClick={() => { undo(); setToolsDropdownOpen(false); }}
+                disabled={!canUndo}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-slate-200 disabled:opacity-30 transition-colors"
+              >
+                <Undo2 className="w-4 h-4" />
+                <span>Undo (Ctrl+Z)</span>
+              </button>
+              <button
+                onClick={() => { redo(); setToolsDropdownOpen(false); }}
+                disabled={!canRedo}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-slate-200 disabled:opacity-30 transition-colors"
+              >
+                <Redo2 className="w-4 h-4" />
+                <span>Redo (Ctrl+Y)</span>
+              </button>
 
               <div className="h-px bg-slate-800 my-1" />
               <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                File & Controls
+                File Storage & Export
               </div>
               <button
-                onClick={handleSaveToLocal}
+                onClick={() => setActiveModal('savedCircuits')}
                 className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors"
               >
                 <Database className="w-4 h-4" />
-                <span>Save to Local Storage</span>
-              </button>
-              <button
-                onClick={handleLoadFromLocal}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-800/80 text-left rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-              >
-                <Database className="w-4 h-4" />
-                <span>Load from Local Storage</span>
+                <span>Saved Circuits Manager</span>
               </button>
               <button
                 onClick={handleExport}
@@ -566,6 +592,20 @@ export const Toolbar: React.FC = () => {
                 <HelpCircle className="w-4 h-4 text-slate-400" />
                 <span>Keyboard Shortcuts & Touch Gestures</span>
               </button>
+
+              {/* Author Credits in Dropdown */}
+              <div className="h-px bg-slate-800 my-1" />
+              <div className="p-2 bg-slate-950/80 rounded-lg text-[10px] text-slate-400 space-y-0.5 border border-slate-800">
+                <div className="text-slate-300 font-semibold">
+                  Crafted with passion and precision by Devashish and Sriyans
+                </div>
+                <a
+                  href="mailto:sriyansraj02@gmail.com"
+                  className="text-emerald-400 hover:underline block font-mono"
+                >
+                  sriyansraj02@gmail.com
+                </a>
+              </div>
             </div>
           )}
         </div>

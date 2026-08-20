@@ -8,7 +8,6 @@ import { useCircuit } from '../../context/CircuitContext';
 import { CircuitComponent, Port, Wire } from '../../types/circuit';
 import { ComponentRenderer } from './ComponentRenderer';
 import { WireRenderer } from './WireRenderer';
-import { Minimap } from './Minimap';
 import {
   Grid,
   Maximize2,
@@ -16,10 +15,7 @@ import {
   Plus,
   Redo2,
   Sliders,
-  Trash2,
   Undo2,
-  X,
-  Zap,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -827,57 +823,6 @@ export const Canvas: React.FC = () => {
         </g>
       </svg>
 
-      {/* Floating Selection Action Bar (Top Center) */}
-      {(selection.wireIds.length > 0 || selection.componentIds.length > 0) && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-[#0f172a]/95 backdrop-blur-md border border-slate-700/80 px-3 py-1.5 rounded-xl shadow-2xl animate-fade-in text-xs">
-          <div className="flex items-center gap-2 pr-2 border-r border-slate-700/60 font-semibold text-slate-200">
-            {selection.wireIds.length > 0 && (
-              <span className="flex items-center gap-1 text-emerald-400 font-mono">
-                <Zap className="w-3.5 h-3.5" />
-                {selection.wireIds.length} {selection.wireIds.length === 1 ? 'Wire' : 'Wires'}
-              </span>
-            )}
-            {selection.componentIds.length > 0 && (
-              <span className="text-blue-400 font-mono">
-                {selection.componentIds.length} {selection.componentIds.length === 1 ? 'Gate' : 'Gates'}
-              </span>
-            )}
-            <span className="text-slate-400">Selected</span>
-          </div>
-
-          {/* Quick Delete Wire(s) / Selection Button */}
-          <button
-            onClick={deleteSelection}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 font-bold rounded-lg transition-all shadow-sm active:scale-95"
-            title="Delete Selected Wire(s) or Component(s) [Del / Backspace]"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            <span>Delete Selected</span>
-          </button>
-
-          {/* Select All Wires Button */}
-          {wires.length > 0 && selection.wireIds.length !== wires.length && (
-            <button
-              onClick={selectAllWires}
-              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-emerald-400 rounded-lg transition-colors"
-              title="Select all connecting wires in circuit"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Select All Wires</span>
-            </button>
-          )}
-
-          {/* Deselect / Dismiss Button */}
-          <button
-            onClick={clearSelection}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors ml-1"
-            title="Deselect [Esc]"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
       {/* Touch-Friendly Floating Canvas Ergonomics Toolbar (Bottom Center / Left) */}
       <div className="absolute bottom-4 left-4 z-30 flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-800/90 p-1.5 rounded-xl shadow-2xl">
         {/* Toggle Library Drawer Button on Mobile/Tablet */}
@@ -990,9 +935,6 @@ export const Canvas: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Minimap in bottom-right corner */}
-      <Minimap />
     </div>
   );
 };

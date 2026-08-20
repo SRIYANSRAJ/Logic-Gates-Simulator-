@@ -18,6 +18,7 @@ import { PresetsModal } from './components/modals/PresetsModal';
 import { ChallengeModal } from './components/modals/ChallengeModal';
 import { EducationalModal } from './components/modals/EducationalModal';
 import { ShortcutHelpModal } from './components/modals/ShortcutHelpModal';
+import { SavedCircuitsModal } from './components/modals/SavedCircuitsModal';
 
 const CircuitAppContent: React.FC = () => {
   const { importJson, sidebarOpen, setSidebarOpen, inspectorOpen, setInspectorOpen, activeModal } = useCircuit();
@@ -69,14 +70,6 @@ const CircuitAppContent: React.FC = () => {
           <Canvas />
         </main>
 
-        {/* Backdrop for Mobile/Tablet when Inspector Drawer is open */}
-        {inspectorOpen && (
-          <div
-            className="fixed inset-0 top-14 bg-black/60 backdrop-blur-xs z-30 xl:hidden"
-            onClick={() => setInspectorOpen(false)}
-          />
-        )}
-
         {/* Right Property Inspector Panel */}
         <Inspector />
       </div>
@@ -91,6 +84,7 @@ const CircuitAppContent: React.FC = () => {
       {activeModal === 'challenges' && <ChallengeModal />}
       {activeModal === 'learn' && <EducationalModal />}
       {activeModal === 'shortcuts' && <ShortcutHelpModal />}
+      {activeModal === 'savedCircuits' && <SavedCircuitsModal />}
     </div>
   );
 };

@@ -31,7 +31,8 @@ export type ActiveModalType =
   | 'learn'
   | 'challenges'
   | 'oscilloscope'
-  | 'shortcuts';
+  | 'shortcuts'
+  | 'savedCircuits';
 
 interface SelectionState {
   componentIds: string[];
@@ -374,8 +375,58 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
         customDef = customGates.find((g) => g.id === options.customGateId);
       }
 
+      // Dynamic sequential naming for inputs and assets
+      let dynamicLabel = options.label;
+      let dynamicName = options.name;
+
+      if (!dynamicLabel) {
+        if (type === 'SWITCH') {
+          const count = components.filter((c) => c.type === 'SWITCH').length + 1;
+          dynamicLabel = `inp ${count}`;
+          if (!dynamicName || dynamicName === 'Toggle Switch') {
+            dynamicName = `Switch ${count}`;
+          }
+        } else if (type === 'BUTTON') {
+          const count = components.filter((c) => c.type === 'BUTTON').length + 1;
+          dynamicLabel = `inp ${count}`;
+          if (!dynamicName || dynamicName === 'Push Button') {
+            dynamicName = `Button ${count}`;
+          }
+        } else if (type === 'CLOCK') {
+          const count = components.filter((c) => c.type === 'CLOCK').length + 1;
+          dynamicLabel = `clk ${count}`;
+          if (!dynamicName) dynamicName = `Clock ${count}`;
+        } else if (type === 'CONST_1') {
+          const count = components.filter((c) => c.type === 'CONST_1').length + 1;
+          dynamicLabel = `vcc ${count}`;
+          if (!dynamicName) dynamicName = `VCC ${count}`;
+        } else if (type === 'CONST_0') {
+          const count = components.filter((c) => c.type === 'CONST_0').length + 1;
+          dynamicLabel = `gnd ${count}`;
+          if (!dynamicName) dynamicName = `GND ${count}`;
+        } else if (type === 'PULSE') {
+          const count = components.filter((c) => c.type === 'PULSE').length + 1;
+          dynamicLabel = `pls ${count}`;
+          if (!dynamicName) dynamicName = `Pulse ${count}`;
+        } else if (type === 'RANDOM') {
+          const count = components.filter((c) => c.type === 'RANDOM').length + 1;
+          dynamicLabel = `rnd ${count}`;
+          if (!dynamicName) dynamicName = `Random ${count}`;
+        } else if (type === 'LED') {
+          const count = components.filter((c) => c.type === 'LED').length + 1;
+          dynamicLabel = `out ${count}`;
+          if (!dynamicName) dynamicName = `LED ${count}`;
+        } else if (type === 'PROBE') {
+          const count = components.filter((c) => c.type === 'PROBE').length + 1;
+          dynamicLabel = `prb ${count}`;
+          if (!dynamicName) dynamicName = `Probe ${count}`;
+        }
+      }
+
       const newComp = createComponent(type, snapX, snapY, {
         ...options,
+        name: dynamicName,
+        label: dynamicLabel,
         customDef,
       });
 

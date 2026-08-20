@@ -10,16 +10,24 @@ import {
   Activity,
   Binary,
   Box,
+  Copy,
   Cpu,
   Database,
+  FlipHorizontal,
   GitMerge,
+  Heart,
   Lightbulb,
   Plus,
+  Redo2,
+  RotateCw,
   Search,
   Sliders,
   Sparkles,
   ToggleRight,
+  Trash2,
+  Undo2,
   X,
+  Zap,
 } from 'lucide-react';
 
 interface ComponentItem {
@@ -40,7 +48,21 @@ interface ComponentGroup {
 }
 
 export const Sidebar: React.FC = () => {
-  const { addComponent, customGates, camera, sidebarOpen, setSidebarOpen } = useCircuit();
+  const {
+    addComponent,
+    customGates,
+    camera,
+    sidebarOpen,
+    setSidebarOpen,
+    selection,
+    deleteSelection,
+    rotateSelection,
+    flipSelection,
+    duplicateSelection,
+    clearCanvas,
+    selectAllWires,
+    wires,
+  } = useCircuit();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -524,10 +546,12 @@ export const Sidebar: React.FC = () => {
 
   if (!sidebarOpen) return null;
 
+  const totalSelected = selection.wireIds.length + selection.componentIds.length;
+
   return (
-    <aside className="fixed lg:relative left-0 top-14 lg:top-0 bottom-0 w-72 lg:w-64 bg-[#0b111e] border-r border-slate-800/80 flex flex-col z-40 select-none shadow-2xl lg:shadow-none transition-transform">
-      {/* Search Header */}
-      <div className="p-3 border-b border-slate-800/60 space-y-2.5">
+    <aside className="fixed lg:relative left-0 top-14 lg:top-0 bottom-0 h-[calc(100vh-3.5rem)] w-72 lg:w-64 bg-[#0b111e] border-r border-slate-800/80 flex flex-col z-40 select-none shadow-2xl lg:shadow-none transition-transform overflow-hidden">
+      {/* Search & Selection Header */}
+      <div className="p-3 border-b border-slate-800/60 space-y-2.5 shrink-0 bg-[#0b111e]">
         <div className="flex items-center justify-between lg:hidden pb-1 border-b border-slate-800/40">
           <span className="text-xs font-bold text-slate-300">Component Library</span>
           <button
@@ -581,7 +605,7 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* Category Pills */}
-        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5 text-[11px]">
+        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5 text-[11px] touch-auto">
           {[
             { id: 'all', label: 'All' },
             { id: 'gates', label: 'Gates' },
@@ -605,8 +629,8 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Component Library List */}
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-4 text-xs">
+      {/* Component Library List with Smooth Scrolling on Touch and Mouse */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-4 text-xs touch-auto overscroll-contain">
         {filteredGroups.length === 0 ? (
           <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-3 text-slate-400">
             <div className="p-3 bg-slate-900 border border-slate-800 rounded-full text-slate-500">
@@ -674,13 +698,20 @@ export const Sidebar: React.FC = () => {
             );
           })
         )}
-        
-        {/* Footer Credit */}
-        <div className="pt-6 pb-2 mt-4 text-center">
-          <p className="text-[10px] text-slate-500 font-medium tracking-wide">
-            Designed by <span className="text-emerald-400">Sriyans Raj</span>
-          </p>
+      </div>
+
+      {/* Embedded Author Credits with Passion & Precision */}
+      <div className="p-2.5 border-t border-slate-800/80 bg-[#090e18] text-center space-y-0.5 shrink-0">
+        <div className="text-[11px] text-slate-300 font-semibold leading-snug">
+          Crafted with passion and precision by{' '}
+          <strong className="text-emerald-400 font-bold block sm:inline">Devashish and Sriyans</strong>
         </div>
+        <a
+          href="mailto:sriyansraj02@gmail.com"
+          className="text-[10px] text-slate-400 hover:text-emerald-400 hover:underline block font-mono"
+        >
+          sriyansraj02@gmail.com
+        </a>
       </div>
     </aside>
   );

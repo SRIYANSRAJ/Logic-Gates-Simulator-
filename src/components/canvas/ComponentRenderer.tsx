@@ -589,8 +589,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     }
   };
 
-  const hasCustomTag = !!(component.label?.trim() || (component.name && !component.name.match(/^[A-Z0-9_-]+_[0-9]+$/i)));
-  const customTagText = component.label?.trim() || (component.name && !component.name.match(/^[A-Z0-9_-]+_[0-9]+$/i) ? component.name : '');
+  const labelText = component.label?.trim() || '';
+  const showLabelBadge = !!labelText;
 
   return (
     <g
@@ -603,31 +603,31 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       {/* Component Outer Body */}
       {renderGateShape()}
 
-      {/* Synchronized Wireless Net Tag / Component Label Badge */}
-      {hasCustomTag && (
-        <g transform={`translate(${width / 2}, ${-14})`}>
+      {/* Dynamic Name / Label Badge (e.g. inp 1, inp 2, clk 1, etc.) */}
+      {showLabelBadge && (
+        <g transform={`translate(${width / 2}, ${-13})`}>
           <rect
-            x={-18 - (customTagText.length * 3.5)}
-            y={-9}
-            width={36 + (customTagText.length * 7)}
-            height={17}
-            rx={8.5}
-            fill="#0b1324"
-            stroke={isSelfActive ? '#10b981' : '#38bdf8'}
+            x={-14 - (labelText.length * 3.5)}
+            y={-8}
+            width={28 + (labelText.length * 7)}
+            height={16}
+            rx={8}
+            fill="#090f1d"
+            stroke={isSelfActive ? '#10b981' : isSelected ? '#60a5fa' : '#334155'}
             strokeWidth={1.5}
-            className="opacity-95 shadow-lg"
+            className="opacity-95 shadow-md"
           />
           <text
             x={0}
-            y={3.5}
+            y={3}
             textAnchor="middle"
-            fill={isSelfActive ? '#34d399' : '#38bdf8'}
-            fontSize={10}
+            fill={isSelfActive ? '#34d399' : '#e2e8f0'}
+            fontSize={9.5}
             fontWeight="bold"
             fontFamily="monospace"
-            className="pointer-events-none"
+            className="pointer-events-none tracking-wide"
           >
-            {`📡 ${customTagText}`}
+            {labelText}
           </text>
         </g>
       )}

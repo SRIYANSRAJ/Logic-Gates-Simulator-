@@ -838,32 +838,72 @@ export function analyzeCircuit(
 }
 
 /**
- * Generate Complete Truth Table for Circuit Inputs & Outputs
+ * Generate Complete Truth Table for Circuit Inputs & Outputs with Variable Unification
  */
 export function generateTruthTable(
   components: CircuitComponent[],
   wires: Wire[],
   customGateDefs: Map<string, CustomGateDefinition> = new Map()
 ): TruthTableData | null {
-  // Identify primary inputs (SWITCH, BUTTON, CONST)
+  // Identify primary variable input components (SWITCH, BUTTON, PULSE, RANDOM, CLOCK)
+  // Note: CONST_0 and CONST_1 are constant sources and remain fixed at 0/1 without expanding table dimensions
   const inputComps = components.filter((c) =>
-    ['SWITCH', 'BUTTON', 'CONST_0', 'CONST_1'].includes(c.type)
+    ['SWITCH', 'BUTTON', 'PULSE', 'RANDOM', 'CLOCK'].includes(c.type)
   );
-  // Identify primary outputs (LED, PROBE)
+  // Identify primary output components (PROBE, LED, DISPLAYS)
   const outputComps = components.filter((c) =>
-    ['LED', 'PROBE'].includes(c.type)
+    ['PROBE', 'LED', 'HEX_DISPLAY', 'DECIMAL_DISPLAY', 'BINARY_DISPLAY', 'SEGMENT_7'].includes(c.type)
   );
 
   if (inputComps.length === 0 || outputComps.length === 0) {
     return null;
   }
 
-  // Cap at 8 inputs (256 rows max) to guarantee instantaneous evaluation
-  const activeInputs = inputComps.slice(0, 8);
-  const inputNames = activeInputs.map((c, i) => c.label || c.name || `In${i}`);
-  const outputNames = outputComps.map((c, i) => c.label || c.name || `Out${i}`);
+  // Group input components by their user-defined variable name/label
+  // If multiple switches share the same label (e.g. 'A'), they represent the SAME variable
+  const variableMap = new Map<string, { name: string; compIds: string[] }>();
+  let autoVarIndex = 0;
+  const defaultVarLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-  const totalCombinations = 1 << activeInputs.length; // 2^N
+  inputComps.forEach((comp) => {
+    let varName = comp.label?.trim();
+    if (!varName) {
+      if (comp.name && !comp.name.match(/^[A-Z0-9_-]+_[0-9]+$/i) && comp.name !== 'Toggle Switch' && comp.name !== 'Push Button') {
+        varName = comp.name.trim();
+      } else {
+        varName = defaultVarLetters[autoVarIndex] || `IN_${autoVarIndex + 1}`;
+        autoVarIndex++;
+      }
+    }
+
+    const key = varName.toLowerCase();
+    if (!variableMap.has(key)) {
+      variableMap.set(key, { name: varName, compIds: [comp.id] });
+    } else {
+      variableMap.get(key)!.compIds.push(comp.id);
+    }
+  });
+
+  const uniqueVariables = Array.from(variableMap.values()).slice(0, 8); // Cap at 8 variables (256 combinations)
+  const inputNames = uniqueVariables.map((v) => v.name);
+
+  // Group and name output components cleanly
+  const outputNames: string[] = [];
+  const usedOutputNames = new Map<string, number>();
+
+  outputComps.forEach((comp, idx) => {
+    let rawName = comp.label?.trim() || comp.name?.trim() || (outputComps.length === 1 ? 'Y' : `OUT_${idx + 1}`);
+    const key = rawName.toLowerCase();
+    const count = usedOutputNames.get(key) || 0;
+    usedOutputNames.set(key, count + 1);
+    if (count > 0) {
+      outputNames.push(`${rawName}_${count + 1}`);
+    } else {
+      outputNames.push(rawName);
+    }
+  });
+
+  const totalCombinations = 1 << uniqueVariables.length; // 2^N
   const rows: TruthTableRow[] = [];
 
   const mintermList: Record<string, number[]> = {};
@@ -874,14 +914,22 @@ export function generateTruthTable(
   });
 
   for (let i = 0; i < totalCombinations; i++) {
-    // Construct input map for this combination
+    // Construct input mapping for this combination
     const currentInputMap: Record<string, 0 | 1> = {};
+    const compValueOverrides = new Map<string, 0 | 1>();
+
+    uniqueVariables.forEach((variable, varIdx) => {
+      // Extract bit from i (MSB to LSB)
+      const bitVal = ((i >> (uniqueVariables.length - 1 - varIdx)) & 1) as 0 | 1;
+      currentInputMap[variable.name] = bitVal;
+      variable.compIds.forEach((id) => {
+        compValueOverrides.set(id, bitVal);
+      });
+    });
+
     const clonedComps = components.map((c) => {
-      const inputIndex = activeInputs.findIndex((inp) => inp.id === c.id);
-      if (inputIndex !== -1) {
-        // Extract bit from i (MSB to LSB)
-        const bitVal = ((i >> (activeInputs.length - 1 - inputIndex)) & 1) as 0 | 1;
-        currentInputMap[inputNames[inputIndex]] = bitVal;
+      if (compValueOverrides.has(c.id)) {
+        const bitVal = compValueOverrides.get(c.id)!;
         return {
           ...c,
           internalState: {
@@ -894,14 +942,14 @@ export function generateTruthTable(
       return { ...c };
     });
 
-    // Run simulation
+    // Run circuit simulation for this combination
     const sim = simulateCircuit(clonedComps, wires, customGateDefs);
 
     // Read outputs
     const currentOutputMap: Record<string, LogicState> = {};
     outputComps.forEach((outComp, idx) => {
       const outName = outputNames[idx];
-      const val = sim.portValues[outComp.id]?.['in_0'] ?? 0;
+      const val = sim.portValues[outComp.id]?.['in_0'] ?? sim.portValues[outComp.id]?.['out'] ?? 0;
       currentOutputMap[outName] = val;
 
       if (val === 1) {
@@ -911,7 +959,6 @@ export function generateTruthTable(
       }
     });
 
-    // Construct Minterm / Maxterm string representation (e.g. m_0, M_0)
     rows.push({
       decimalIndex: i,
       inputs: currentInputMap,

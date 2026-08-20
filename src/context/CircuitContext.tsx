@@ -115,6 +115,7 @@ interface CircuitContextType {
   toggleSwitch: (compId: string) => void;
   pressButton: (compId: string, pressed: boolean) => void;
   triggerPulse: (compId: string) => void;
+  applyInputValues: (variableValues: Record<string, 0 | 1>) => void;
 
   stepSimulation: () => void;
   toggleSimulation: (running?: boolean) => void;
@@ -836,6 +837,33 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 150);
   }, []);
 
+  const applyInputValues = useCallback((variableValues: Record<string, 0 | 1>) => {
+    setComponents((prev) => {
+      return prev.map((c) => {
+        const customTag = (c.label?.trim() || (c.name && !c.name.match(/^[A-Z0-9_-]+_[0-9]+$/i) ? c.name.trim() : '')).toLowerCase();
+        
+        for (const [vName, vVal] of Object.entries(variableValues)) {
+          const targetKey = vName.trim().toLowerCase();
+          const matchesLabel = c.label?.trim().toLowerCase() === targetKey;
+          const matchesName = c.name?.trim().toLowerCase() === targetKey;
+          const matchesTag = customTag === targetKey;
+
+          if (matchesLabel || matchesName || matchesTag) {
+            return {
+              ...c,
+              internalState: {
+                ...c.internalState,
+                value: vVal,
+                pressed: vVal === 1,
+              },
+            };
+          }
+        }
+        return c;
+      });
+    });
+  }, []);
+
   // Simulation Controls
   const stepSimulation = useCallback(() => {
     const next = simulateCircuit(components, wires, customGateMap.current, simulationState.componentStates);
@@ -1263,6 +1291,7 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toggleSwitch,
         pressButton,
         triggerPulse,
+        applyInputValues,
 
         stepSimulation,
         toggleSimulation,

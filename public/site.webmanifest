@@ -1,0 +1,13 @@
+{
+  "name": "DigiLogic Lab - Digital Logic Circuit Simulator",
+  "short_name": "DigiLogic Lab",
+  "description": "Professional digital logic circuit simulator and educational lab for building logic gates, flip-flops, and custom integrated circuits.",
+  "icons": [
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#0a1120",
+  "background_color": "#0a1120",
+  "display": "standalone",
+  "start_url": "/"
+}

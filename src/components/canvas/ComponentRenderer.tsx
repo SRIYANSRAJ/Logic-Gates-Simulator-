@@ -6,6 +6,8 @@
 import React from 'react';
 import { CircuitComponent, LogicState, Port } from '../../types/circuit';
 import { COMPONENT_METADATA } from '../../engine/componentFactory';
+import { useCircuit } from '../../context/CircuitContext';
+import { THEME_PRESETS } from '../../theme/themes';
 
 interface ComponentRendererProps {
   component: CircuitComponent;
@@ -32,6 +34,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   onPressButton,
   onTriggerPulse,
 }) => {
+  const { theme } = useCircuit();
+  const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
+
   const meta = COMPONENT_METADATA[component.type] || COMPONENT_METADATA.AND;
   const width = meta.width;
   const height = Math.max(meta.height, component.inputCount > 2 ? component.inputCount * 22 + 16 : meta.height);
@@ -47,13 +52,13 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
     component.internalState?.clockState === true ||
     isAnyOutputHigh;
 
-  // Dynamic visual feedback: emerald green border & subtle green tint on TRUE, slate on FALSE
-  const gateFill = isSelfActive ? '#09271e' : '#1e293b';
+  // Dynamic visual feedback based on active theme
+  const gateFill = isSelfActive ? activeTheme.gateActiveFill : activeTheme.gateInactiveFill;
   const gateStroke = isSelected
     ? '#60a5fa'
     : isSelfActive
-    ? '#10b981'
-    : '#475569';
+    ? activeTheme.gateActiveStroke
+    : activeTheme.gateInactiveStroke;
   const gateStrokeWidth = isSelected ? 2.5 : isSelfActive ? 2 : 1.75;
 
   // Render gate SVG graphic according to component type
@@ -241,8 +246,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               width={width - 10}
               height={height - 10}
               rx={8}
-              fill={val === 1 ? '#064e3b' : '#1e293b'}
-              stroke={val === 1 ? '#10b981' : isSelected ? '#60a5fa' : '#475569'}
+              fill={val === 1 ? activeTheme.inputActiveFill : activeTheme.gateInactiveFill}
+              stroke={val === 1 ? activeTheme.inputActiveStroke : isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
               strokeWidth={2}
             />
             {/* Switch Toggle Knob */}
@@ -250,7 +255,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               cx={val === 1 ? width - 20 : 20}
               cy={height / 2}
               r={12}
-              fill={val === 1 ? '#34d399' : '#64748b'}
+              fill={val === 1 ? activeTheme.inputKnobActive : '#64748b'}
               stroke="#0f172a"
               strokeWidth={2}
               className="transition-all duration-150 shadow-md"
@@ -283,7 +288,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               (e.target as Element).releasePointerCapture(e.pointerId);
               onPressButton?.(false);
             }}
-            onPointerCancel={(e) => {
+            onPointerCancel={() => {
               onPressButton?.(false);
             }}
           >
@@ -293,15 +298,15 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               width={width - 10}
               height={height - 10}
               rx={10}
-              fill="#1e293b"
-              stroke={pressed ? '#10b981' : isSelected ? '#60a5fa' : '#475569'}
+              fill={activeTheme.gateInactiveFill}
+              stroke={pressed ? activeTheme.inputActiveStroke : isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
               strokeWidth={2}
             />
             <circle
               cx={width / 2}
               cy={height / 2}
               r={pressed ? 14 : 16}
-              fill={pressed ? '#10b981' : '#e11d48'}
+              fill={pressed ? activeTheme.inputKnobActive : '#e11d48'}
               stroke="#0f172a"
               strokeWidth={2}
               className="transition-all duration-100 shadow-md"
@@ -331,22 +336,22 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               width={width - 10}
               height={height - 10}
               rx={8}
-              fill="#1e293b"
-              stroke={clkVal === 1 ? '#f59e0b' : isSelected ? '#60a5fa' : '#475569'}
+              fill={activeTheme.gateInactiveFill}
+              stroke={clkVal === 1 ? activeTheme.inputActiveStroke : isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
               strokeWidth={2}
             />
             {/* Square wave icon */}
             <path
               d={`M 14 ${height / 2 + 8} L 22 ${height / 2 + 8} L 22 ${height / 2 - 8} L 32 ${height / 2 - 8} L 32 ${height / 2 + 8} L 40 ${height / 2 + 8}`}
               fill="none"
-              stroke={clkVal === 1 ? '#f59e0b' : '#94a3b8'}
+              stroke={clkVal === 1 ? activeTheme.clockTraceActive : '#94a3b8'}
               strokeWidth={2.5}
             />
             <circle
               cx={width - 16}
               cy={14}
-              r={3}
-              fill={clkVal === 1 ? '#f59e0b' : '#334155'}
+              r={3.5}
+              fill={clkVal === 1 ? activeTheme.clockTraceActive : activeTheme.portInactiveColor}
             />
           </g>
         );
@@ -361,15 +366,15 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               width={width - 10}
               height={height - 10}
               rx={8}
-              fill="#064e3b"
-              stroke="#10b981"
+              fill={activeTheme.inputActiveFill}
+              stroke={activeTheme.inputActiveStroke}
               strokeWidth={2}
             />
             <text
               x={width / 2}
               y={height / 2 + 5}
               textAnchor="middle"
-              fill="#34d399"
+              fill={activeTheme.inputKnobActive}
               fontSize={14}
               fontWeight="bold"
               className="font-mono"
@@ -388,8 +393,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               width={width - 10}
               height={height - 10}
               rx={8}
-              fill="#1e293b"
-              stroke="#64748b"
+              fill={activeTheme.gateInactiveFill}
+              stroke={activeTheme.gateInactiveStroke}
               strokeWidth={2}
             />
             <text
@@ -411,13 +416,13 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         const isOn = inVal === 1;
         return (
           <g>
-            {/* Glow effect when ON */}
+            {/* Glow halo when ON */}
             {isOn && (
               <circle
                 cx={width / 2}
                 cy={height / 2}
-                r={22}
-                fill="url(#led-glow)"
+                r={24}
+                fill={activeTheme.ledGlowColor}
                 className="animate-pulse"
               />
             )}
@@ -428,7 +433,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               cy={height / 2}
               r={18}
               fill="#0f172a"
-              stroke={isSelected ? '#60a5fa' : '#334155'}
+              stroke={isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
               strokeWidth={2}
             />
 
@@ -437,8 +442,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               cx={width / 2}
               cy={height / 2}
               r={14}
-              fill={isOn ? '#10b981' : '#1e293b'}
-              stroke={isOn ? '#34d399' : '#0f172a'}
+              fill={isOn ? activeTheme.ledActiveFill : activeTheme.gateInactiveFill}
+              stroke={isOn ? activeTheme.ledActiveStroke : '#0f172a'}
               strokeWidth={1.5}
               className="transition-colors duration-200"
             />
@@ -448,7 +453,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               cx={width / 2}
               cy={height / 2}
               r={8}
-              fill={isOn ? '#a7f3d0' : '#334155'}
+              fill={isOn ? activeTheme.inputKnobActive : '#334155'}
               className="transition-colors duration-200"
               opacity={isOn ? 1 : 0.4}
             />
@@ -462,25 +467,17 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               strokeLinecap="round"
               opacity={isOn ? 0.8 : 0.15}
             />
-
-            {/* Defs for Glow (Rendered once per LED, safe since it uses relative bounding box or we can just use a generic drop shadow) */}
-            <defs>
-              <radialGradient id="led-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="rgba(16, 185, 129, 0.6)" />
-                <stop offset="100%" stopColor="rgba(16, 185, 129, 0)" />
-              </radialGradient>
-            </defs>
           </g>
         );
       }
 
       case 'PROBE': {
         const inVal = portValues[component.ports[0]?.id] ?? 0;
-        let badgeColor = '#1e293b';
+        let badgeColor = activeTheme.gateInactiveFill;
         let textColor = '#94a3b8';
         if (inVal === 1) {
-          badgeColor = '#064e3b';
-          textColor = '#34d399';
+          badgeColor = activeTheme.probeActiveBg;
+          textColor = activeTheme.probeActiveText;
         } else if (inVal === 'Z') {
           badgeColor = '#78350f';
           textColor = '#fbbf24';
@@ -498,7 +495,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               height={height - 10}
               rx={8}
               fill={badgeColor}
-              stroke={isSelected ? '#60a5fa' : '#475569'}
+              stroke={isSelected ? '#60a5fa' : inVal === 1 ? activeTheme.inputActiveStroke : activeTheme.gateInactiveStroke}
               strokeWidth={2}
             />
             <text
@@ -527,8 +524,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               width={width - 8}
               height={height - 8}
               rx={8}
-              fill="#090d16"
-              stroke={isSelected ? '#60a5fa' : '#334155'}
+              fill={activeTheme.canvasBg}
+              stroke={isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
               strokeWidth={2}
             />
             {/* 7 Segment style digit display */}
@@ -536,11 +533,11 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               x={width / 2}
               y={height / 2 + 10}
               textAnchor="middle"
-              fill="#ef4444"
+              fill={activeTheme.displayDigitColor}
               fontSize={28}
               fontFamily="monospace"
               fontWeight="bold"
-              className="drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]"
+              className={activeTheme.displayDigitGlow}
             >
               {hexVal}
             </text>
@@ -550,6 +547,13 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
 
       default: {
         // Generic IC Chip Representation (Adders, Multiplexers, Latches, Registers)
+        const boxFill = isSelfActive ? activeTheme.boxActiveFill : activeTheme.boxInactiveFill;
+        const boxStroke = isSelected
+          ? '#60a5fa'
+          : isSelfActive
+          ? activeTheme.boxActiveStroke
+          : activeTheme.boxInactiveStroke;
+
         return (
           <g>
             <rect
@@ -558,16 +562,16 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               width={width - 16}
               height={height - 10}
               rx={6}
-              fill={gateFill}
-              stroke={gateStroke}
+              fill={boxFill}
+              stroke={boxStroke}
               strokeWidth={gateStrokeWidth}
               className="transition-colors duration-150"
             />
             {/* IC Orientation Notch at top */}
             <path
               d={`M ${width / 2 - 8} 5 C ${width / 2 - 8} 10 ${width / 2 + 8} 10 ${width / 2 + 8} 5`}
-              fill="#0f172a"
-              stroke="#475569"
+              fill={activeTheme.panelBg}
+              stroke={activeTheme.boxInactiveStroke}
               strokeWidth={1.25}
             />
             {/* IC Chip Label */}
@@ -575,7 +579,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               x={width / 2}
               y={height / 2 + 4}
               textAnchor="middle"
-              fill={isSelfActive ? '#34d399' : '#cbd5e1'}
+              fill={isSelfActive ? activeTheme.primaryColor : '#cbd5e1'}
               fontSize={10}
               fontWeight="bold"
               fontFamily="monospace"
@@ -612,8 +616,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
             width={28 + (labelText.length * 7)}
             height={16}
             rx={8}
-            fill="#090f1d"
-            stroke={isSelfActive ? '#10b981' : isSelected ? '#60a5fa' : '#334155'}
+            fill={isSelfActive ? activeTheme.badgeActiveBg : activeTheme.panelBg}
+            stroke={isSelfActive ? activeTheme.badgeActiveBorder : isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
             strokeWidth={1.5}
             className="opacity-95 shadow-md"
           />
@@ -621,7 +625,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
             x={0}
             y={3}
             textAnchor="middle"
-            fill={isSelfActive ? '#34d399' : '#e2e8f0'}
+            fill={isSelfActive ? activeTheme.badgeActiveText : '#e2e8f0'}
             fontSize={9.5}
             fontWeight="bold"
             fontFamily="monospace"
@@ -635,8 +639,8 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       {/* Connection Ports (Pins) */}
       {component.ports.map((port) => {
         const val = portValues[port.id];
-        let portColor = '#475569';
-        if (val === 1) portColor = '#10b981';
+        let portColor = activeTheme.portInactiveColor;
+        if (val === 1) portColor = activeTheme.portActiveColor;
         else if (val === 'Z') portColor = '#d97706';
         else if (val === 'X') portColor = '#ef4444';
 

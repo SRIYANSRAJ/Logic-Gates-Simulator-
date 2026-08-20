@@ -5,6 +5,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useCircuit } from '../../context/CircuitContext';
+import { THEME_PRESETS } from '../../theme/themes';
 import {
   Activity,
   Award,
@@ -65,12 +66,14 @@ export const Toolbar: React.FC = () => {
     importJson,
     clearCanvas,
     setActiveModal,
+    theme,
     sidebarOpen,
     toggleSidebar,
     inspectorOpen,
     toggleInspector,
   } = useCircuit();
 
+  const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(circuitName);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
@@ -147,16 +150,31 @@ export const Toolbar: React.FC = () => {
   };
 
   return (
-    <header className="h-14 bg-[#0b111e] border-b border-slate-800/80 px-2 sm:px-3 flex items-center justify-between z-20 select-none shrink-0 gap-1 sm:gap-2">
+    <header
+      style={{
+        backgroundColor: activeTheme.navBg,
+        borderColor: activeTheme.borderTone,
+      }}
+      className="h-14 border-b px-2 sm:px-3 flex items-center justify-between z-20 select-none shrink-0 gap-1 sm:gap-2 transition-colors duration-300"
+    >
       {/* Left: Library Toggle & Brand */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Toggle Library Drawer Button */}
         <button
           onClick={toggleSidebar}
+          style={
+            sidebarOpen
+              ? {
+                  backgroundColor: `${activeTheme.primaryColor}22`,
+                  borderColor: `${activeTheme.primaryColor}55`,
+                  color: activeTheme.primaryColor,
+                }
+              : {}
+          }
           className={`p-2 rounded-lg border transition-colors ${
             sidebarOpen
-              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-              : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-emerald-400 hover:bg-slate-800'
+              ? ''
+              : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
           }`}
           title="Toggle Component Library"
         >
@@ -164,7 +182,14 @@ export const Toolbar: React.FC = () => {
         </button>
 
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-950">
+          <div
+            style={{
+              backgroundColor: `${activeTheme.primaryColor}20`,
+              borderColor: `${activeTheme.primaryColor}40`,
+              color: activeTheme.primaryColor,
+            }}
+            className="w-8 h-8 rounded-lg border flex items-center justify-center shadow-sm"
+          >
             <Cpu className="w-5 h-5" />
           </div>
           <div className="hidden xs:block sm:block">
@@ -172,7 +197,14 @@ export const Toolbar: React.FC = () => {
               <span className="font-bold text-xs sm:text-sm text-slate-100 tracking-wide font-mono">
                 DigiLogic
               </span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold hidden md:inline">
+              <span
+                style={{
+                  backgroundColor: `${activeTheme.primaryColor}15`,
+                  color: activeTheme.primaryColor,
+                  borderColor: `${activeTheme.primaryColor}30`,
+                }}
+                className="text-[10px] px-1.5 py-0.2 rounded border font-semibold hidden md:inline"
+              >
                 Lab
               </span>
             </div>
@@ -199,7 +231,7 @@ export const Toolbar: React.FC = () => {
                 }
               }}
               autoFocus
-              className="px-2 py-0.5 bg-slate-900 border border-emerald-500/50 rounded text-xs text-slate-100 font-semibold focus:outline-none max-w-32"
+              className="px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-xs text-slate-100 font-semibold focus:outline-none max-w-32"
             />
           ) : (
             <button
@@ -207,7 +239,7 @@ export const Toolbar: React.FC = () => {
                 setTempName(circuitName);
                 setIsEditingName(true);
               }}
-              className="text-xs font-semibold text-slate-300 hover:text-emerald-400 hover:bg-slate-800/60 px-2 py-1 rounded transition-colors truncate max-w-36"
+              className="text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 px-2 py-1 rounded transition-colors truncate max-w-36"
               title="Click to rename circuit"
             >
               {circuitName}
@@ -221,16 +253,25 @@ export const Toolbar: React.FC = () => {
         {/* Run/Pause Toggle */}
         <button
           onClick={() => toggleSimulation()}
+          style={
+            simulationRunning
+              ? {
+                  backgroundColor: `${activeTheme.primaryColor}22`,
+                  borderColor: `${activeTheme.primaryColor}55`,
+                  color: activeTheme.primaryColor,
+                }
+              : {}
+          }
           className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded-lg font-bold text-xs transition-all shadow-sm ${
             simulationRunning
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
+              ? 'border'
               : 'bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30'
           }`}
           title={simulationRunning ? 'Pause simulation' : 'Run simulation'}
         >
           {simulationRunning ? (
             <>
-              <Pause className="w-3.5 h-3.5 fill-emerald-400" />
+              <Pause className="w-3.5 h-3.5" style={{ fill: activeTheme.primaryColor }} />
               <span className="hidden sm:inline">RUNNING</span>
             </>
           ) : (
@@ -655,10 +696,19 @@ export const Toolbar: React.FC = () => {
         {/* Toggle Inspector Drawer Button */}
         <button
           onClick={toggleInspector}
+          style={
+            inspectorOpen
+              ? {
+                  backgroundColor: `${activeTheme.primaryColor}22`,
+                  borderColor: `${activeTheme.primaryColor}55`,
+                  color: activeTheme.primaryColor,
+                }
+              : {}
+          }
           className={`p-2 rounded-lg border transition-colors ${
             inspectorOpen
-              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
-              : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-emerald-400 hover:bg-slate-800'
+              ? ''
+              : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
           }`}
           title="Toggle Property Inspector"
         >

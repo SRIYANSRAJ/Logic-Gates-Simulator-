@@ -511,8 +511,17 @@ export const Inspector: React.FC = () => {
   };
 
   return (
-    <aside className="fixed xl:relative right-0 top-14 xl:top-0 bottom-0 h-[calc(100vh-3.5rem)] w-72 xl:w-64 bg-[#0b111e] border-l border-slate-800/80 p-3 flex flex-col justify-between select-none text-xs text-slate-300 z-40 shadow-2xl xl:shadow-none overflow-hidden transition-transform">
-      <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/60 shrink-0">
+    <aside
+      style={{
+        backgroundColor: currentTheme.panelBg,
+        borderColor: currentTheme.panelBorder || currentTheme.borderTone,
+      }}
+      className="fixed xl:relative right-0 top-14 xl:top-0 bottom-0 h-[calc(100vh-3.5rem)] w-72 xl:w-64 border-l p-3 flex flex-col justify-between select-none text-xs text-slate-300 z-40 shadow-2xl xl:shadow-none overflow-hidden transition-all duration-300"
+    >
+      <div
+        style={{ borderColor: currentTheme.borderTone }}
+        className="flex items-center justify-between pb-1.5 border-b shrink-0"
+      >
         <span className="text-xs font-bold text-slate-200">Properties & Operations</span>
         <button
           onClick={() => setInspectorOpen(false)}
@@ -528,14 +537,20 @@ export const Inspector: React.FC = () => {
       </div>
 
       {/* Embedded Author Credits with Passion & Precision */}
-      <div className="p-2.5 border-t border-slate-800/80 bg-[#090e18] text-center space-y-0.5 shrink-0 rounded-lg mt-2">
+      <div
+        style={{ backgroundColor: currentTheme.navBg, borderColor: currentTheme.borderTone }}
+        className="p-2.5 border-t text-center space-y-0.5 shrink-0 rounded-lg mt-2"
+      >
         <div className="text-[11px] text-slate-300 font-semibold leading-snug">
           Crafted with passion and precision by{' '}
-          <strong className="text-emerald-400 font-bold block sm:inline">Devashish and Sriyans</strong>
+          <strong style={{ color: currentTheme.primaryColor }} className="font-bold block sm:inline">
+            Devashish and Sriyans
+          </strong>
         </div>
         <a
           href="mailto:sriyansraj02@gmail.com"
-          className="text-[10px] text-slate-400 hover:text-emerald-400 hover:underline block font-mono"
+          style={{ color: currentTheme.secondaryColor }}
+          className="text-[10px] hover:underline block font-mono opacity-80"
         >
           sriyansraj02@gmail.com
         </a>

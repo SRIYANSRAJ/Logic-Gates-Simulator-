@@ -87,7 +87,7 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
   const pathD = generatePath();
 
   // Color coding based on digital state and active theme
-  let strokeColor = '#334155'; // 0 / Low: dark slate
+  let strokeColor = activeTheme.wireLowColor || '#334155'; // 0 / Low: theme low color
   let glowColor = 'none';
 
   if (state === 1) {

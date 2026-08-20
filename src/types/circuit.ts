@@ -20,14 +20,60 @@ export interface ThemeConfig {
   id: ThemePreset;
   name: string;
   description: string;
+  // Brand / Main Colors
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
+
+  // Wires & Signals
   wireHighColor: string;
   wireGlowColor: string;
+  wireLowColor: string;
+  signalPulseColor: string;
+
+  // Canvas & Backgrounds
   canvasBg: string;
+  gridDotColor: string;
+  navBg: string;
   panelBg: string;
+  panelBorder: string;
   borderTone: string;
+
+  // Gate & Component Styling
+  gateActiveFill: string;
+  gateInactiveFill: string;
+  gateActiveStroke: string;
+  gateInactiveStroke: string;
+
+  // IC Boxes & Complex Chips (Adders, Latches, MUX, etc.)
+  boxActiveFill: string;
+  boxInactiveFill: string;
+  boxActiveStroke: string;
+  boxInactiveStroke: string;
+
+  // Input Controls (Switches, Buttons, Clocks, VCC)
+  inputActiveFill: string;
+  inputActiveStroke: string;
+  inputKnobActive: string;
+  clockTraceActive: string;
+
+  // Output Visualizers (LEDs, Probes, 7-Segment, Hex)
+  ledGlowColor: string;
+  ledActiveFill: string;
+  ledActiveStroke: string;
+  probeActiveBg: string;
+  probeActiveText: string;
+  displayDigitColor: string;
+  displayDigitGlow: string;
+
+  // Port Pins
+  portActiveColor: string;
+  portInactiveColor: string;
+
+  // Label Badges
+  badgeActiveBg: string;
+  badgeActiveBorder: string;
+  badgeActiveText: string;
 }
 
 export type ComponentCategory = 

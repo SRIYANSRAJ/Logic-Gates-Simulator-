@@ -6,6 +6,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useCircuit } from '../../context/CircuitContext';
 import { GateType } from '../../types/circuit';
+import { THEME_PRESETS } from '../../theme/themes';
 import {
   Activity,
   Binary,
@@ -49,6 +50,7 @@ interface ComponentGroup {
 
 export const Sidebar: React.FC = () => {
   const {
+    theme,
     addComponent,
     customGates,
     camera,
@@ -63,6 +65,7 @@ export const Sidebar: React.FC = () => {
     selectAllWires,
     wires,
   } = useCircuit();
+  const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -549,9 +552,18 @@ export const Sidebar: React.FC = () => {
   const totalSelected = selection.wireIds.length + selection.componentIds.length;
 
   return (
-    <aside className="fixed lg:relative left-0 top-14 lg:top-0 bottom-0 h-[calc(100vh-3.5rem)] w-72 lg:w-64 bg-[#0b111e] border-r border-slate-800/80 flex flex-col z-40 select-none shadow-2xl lg:shadow-none transition-transform overflow-hidden">
+    <aside
+      style={{
+        backgroundColor: activeTheme.panelBg,
+        borderColor: activeTheme.panelBorder || activeTheme.borderTone,
+      }}
+      className="fixed lg:relative left-0 top-14 lg:top-0 bottom-0 h-[calc(100vh-3.5rem)] w-72 lg:w-64 border-r flex flex-col z-40 select-none shadow-2xl lg:shadow-none transition-all duration-300 overflow-hidden"
+    >
       {/* Search & Selection Header */}
-      <div className="p-3 border-b border-slate-800/60 space-y-2.5 shrink-0 bg-[#0b111e]">
+      <div
+        style={{ backgroundColor: activeTheme.panelBg, borderColor: activeTheme.borderTone }}
+        className="p-3 border-b space-y-2.5 shrink-0"
+      >
         <div className="flex items-center justify-between lg:hidden pb-1 border-b border-slate-800/40">
           <span className="text-xs font-bold text-slate-300">Component Library</span>
           <button
@@ -569,7 +581,7 @@ export const Sidebar: React.FC = () => {
             placeholder="Search gates, adders, flip-flops... (/)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-7 py-1.5 bg-slate-900 border border-slate-700/70 focus:border-emerald-500 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors shadow-inner"
+            className="w-full pl-8 pr-7 py-1.5 bg-slate-900/90 border border-slate-700/70 focus:border-emerald-500 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none transition-colors shadow-inner"
           />
           {searchQuery ? (
             <button
@@ -597,7 +609,8 @@ export const Sidebar: React.FC = () => {
             </span>
             <button
               onClick={() => setSearchQuery('')}
-              className="text-emerald-400 hover:text-emerald-300 text-[10px] font-semibold"
+              style={{ color: activeTheme.primaryColor }}
+              className="text-[10px] font-semibold hover:underline"
             >
               Reset
             </button>
@@ -613,19 +626,31 @@ export const Sidebar: React.FC = () => {
             { id: 'outputs', label: 'Displays' },
             { id: 'complex', label: 'MSI/ALU' },
             { id: 'sequential', label: 'Memory' },
-          ].map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-2 py-0.5 rounded-md whitespace-nowrap font-medium transition-colors cursor-pointer ${
-                activeCategory === cat.id
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+          ].map((cat) => {
+            const isActive = activeCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: `${activeTheme.primaryColor}22`,
+                        color: activeTheme.primaryColor,
+                        borderColor: `${activeTheme.primaryColor}55`,
+                      }
+                    : {}
+                }
+                className={`px-2 py-0.5 rounded-md whitespace-nowrap font-medium transition-colors cursor-pointer border ${
+                  isActive
+                    ? ''
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -639,7 +664,7 @@ export const Sidebar: React.FC = () => {
             <div className="space-y-1">
               <p className="font-semibold text-slate-300 text-xs">No matching components</p>
               <p className="text-[11px] text-slate-500">
-                No components matched "{searchQuery}". Try keywords like <span className="text-emerald-400">AND</span>, <span className="text-emerald-400">adder</span>, or <span className="text-emerald-400">flip-flop</span>.
+                No components matched "{searchQuery}". Try keywords like <span style={{ color: activeTheme.primaryColor }}>AND</span>, <span style={{ color: activeTheme.primaryColor }}>adder</span>, or <span style={{ color: activeTheme.primaryColor }}>flip-flop</span>.
               </p>
             </div>
             <button
@@ -674,7 +699,9 @@ export const Sidebar: React.FC = () => {
                     >
                       <div className="flex flex-col min-w-0 pr-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-slate-200 group-hover:text-emerald-400 transition-colors truncate">
+                          <span
+                            className="font-semibold text-slate-200 group-hover:text-emerald-400 transition-colors truncate"
+                          >
                             {item.name}
                           </span>
                           {item.equation && (
@@ -688,7 +715,13 @@ export const Sidebar: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-emerald-500/20 text-emerald-400 rounded shrink-0">
+                      <div
+                        style={{
+                          backgroundColor: `${activeTheme.primaryColor}22`,
+                          color: activeTheme.primaryColor,
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded shrink-0"
+                      >
                         <Plus className="w-3.5 h-3.5" />
                       </div>
                     </button>
@@ -701,14 +734,20 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Embedded Author Credits with Passion & Precision */}
-      <div className="p-2.5 border-t border-slate-800/80 bg-[#090e18] text-center space-y-0.5 shrink-0">
+      <div
+        style={{ backgroundColor: activeTheme.navBg, borderColor: activeTheme.borderTone }}
+        className="p-2.5 border-t text-center space-y-0.5 shrink-0"
+      >
         <div className="text-[11px] text-slate-300 font-semibold leading-snug">
           Crafted with passion and precision by{' '}
-          <strong className="text-emerald-400 font-bold block sm:inline">Devashish and Sriyans</strong>
+          <strong style={{ color: activeTheme.primaryColor }} className="font-bold block sm:inline">
+            Devashish and Sriyans
+          </strong>
         </div>
         <a
           href="mailto:sriyansraj02@gmail.com"
-          className="text-[10px] text-slate-400 hover:text-emerald-400 hover:underline block font-mono"
+          style={{ color: activeTheme.secondaryColor }}
+          className="text-[10px] hover:underline block font-mono opacity-80"
         >
           sriyansraj02@gmail.com
         </a>

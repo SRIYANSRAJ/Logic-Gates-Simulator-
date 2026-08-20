@@ -8,6 +8,7 @@ import { useCircuit } from '../../context/CircuitContext';
 import { CircuitComponent, Port, Wire } from '../../types/circuit';
 import { ComponentRenderer } from './ComponentRenderer';
 import { WireRenderer } from './WireRenderer';
+import { THEME_PRESETS } from '../../theme/themes';
 import {
   Grid,
   Maximize2,
@@ -22,6 +23,7 @@ import {
 
 export const Canvas: React.FC = () => {
   const {
+    theme,
     components,
     wires,
     selection,
@@ -70,6 +72,8 @@ export const Canvas: React.FC = () => {
     setInspectorOpen,
     toggleInspector,
   } = useCircuit();
+
+  const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -602,10 +606,6 @@ export const Canvas: React.FC = () => {
     const isAlreadySelected = selection.componentIds.includes(comp.id);
     if (!isAlreadySelected) {
       selectComponent(comp.id, false);
-      // Auto-open Inspector on Tablets/Mobile for easy access to component properties/delete
-      if (window.innerWidth < 1280) {
-        setInspectorOpen(true);
-      }
     }
 
     const touch = e.touches[0];
@@ -702,7 +702,8 @@ export const Canvas: React.FC = () => {
     <div
       ref={containerRef}
       id="circuit-canvas-container"
-      className="relative w-full h-full bg-[#090d16] overflow-hidden select-none cursor-default touch-none"
+      style={{ backgroundColor: activeTheme.canvasBg }}
+      className="relative w-full h-full overflow-hidden select-none cursor-default touch-none transition-colors duration-300"
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -727,7 +728,7 @@ export const Canvas: React.FC = () => {
               camera.y % (gridSize * camera.zoom)
             })`}
           >
-            <circle cx={1.5} cy={1.5} r={1.2} fill="#1e293b" />
+            <circle cx={1.5} cy={1.5} r={1.2} fill={activeTheme.gridDotColor} />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#grid-dots)" />

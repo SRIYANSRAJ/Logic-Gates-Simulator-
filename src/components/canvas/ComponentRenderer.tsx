@@ -879,11 +879,6 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         const px = port.relativePosition.x;
         const py = port.relativePosition.y;
 
-        const isWireTargetCandidate =
-          Boolean(wireDraft) &&
-          wireDraft?.fromCompId !== component.id &&
-          port.type === 'input';
-
         return (
           <g
             key={port.id}
@@ -904,21 +899,6 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               onPortTouchStart?.(e, port);
             }}
           >
-            {/* Magnetic Target Pulse Ring when Wiring */}
-            {isWireTargetCandidate && (
-              <circle
-                cx={px}
-                cy={py}
-                r={16}
-                fill="rgba(59, 130, 246, 0.2)"
-                stroke="#60a5fa"
-                strokeWidth={1.5}
-                strokeDasharray="3, 3"
-                className="animate-spin"
-                style={{ animationDuration: '4s' }}
-              />
-            )}
-
             {/* Magnetic Touch Target & Hover Ring (Expanded for easy touch and click interaction) */}
             <circle
               cx={px}

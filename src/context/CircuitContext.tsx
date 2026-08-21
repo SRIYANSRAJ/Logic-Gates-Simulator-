@@ -718,23 +718,50 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return; // Prevent self-loop on same component
       }
 
-      // Check if wire already exists
+      const fromComp = components.find((c) => c.id === wireDraft.fromCompId);
+      const targetComp = components.find((c) => c.id === targetCompId);
+      if (!fromComp || !targetComp) {
+        setWireDraft(null);
+        return;
+      }
+
+      const fromPort = fromComp.ports.find((p) => p.id === wireDraft.fromPortId);
+      const targetPort = targetComp.ports.find((p) => p.id === targetPortId);
+
+      let sourceCompId = wireDraft.fromCompId;
+      let sourcePortId = wireDraft.fromPortId;
+      let destCompId = targetCompId;
+      let destPortId = targetPortId;
+
+      // If user dragged from an input port to an output port, orient wire output -> input
+      if (fromPort?.type === 'input' && targetPort?.type === 'output') {
+        sourceCompId = targetCompId;
+        sourcePortId = targetPortId;
+        destCompId = wireDraft.fromCompId;
+        destPortId = wireDraft.fromPortId;
+      }
+
+      // Check if wire already exists in either direction
       const existing = wires.find(
         (w) =>
-          w.fromComponentId === wireDraft.fromCompId &&
-          w.fromPortId === wireDraft.fromPortId &&
-          w.toComponentId === targetCompId &&
-          w.toPortId === targetPortId
+          (w.fromComponentId === sourceCompId &&
+            w.fromPortId === sourcePortId &&
+            w.toComponentId === destCompId &&
+            w.toPortId === destPortId) ||
+          (w.fromComponentId === destCompId &&
+            w.fromPortId === destPortId &&
+            w.toComponentId === sourceCompId &&
+            w.toPortId === sourcePortId)
       );
 
       if (!existing) {
         recordHistory(components, wires);
         const newWire: Wire = {
           id: `wire_${Date.now()}_${Math.random()}`,
-          fromComponentId: wireDraft.fromCompId,
-          fromPortId: wireDraft.fromPortId,
-          toComponentId: targetCompId,
-          toPortId: targetPortId,
+          fromComponentId: sourceCompId,
+          fromPortId: sourcePortId,
+          toComponentId: destCompId,
+          toPortId: destPortId,
         };
         setWires((prev) => [...prev, newWire]);
       }

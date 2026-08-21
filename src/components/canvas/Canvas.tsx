@@ -295,8 +295,33 @@ export const Canvas: React.FC = () => {
       setIsPanning(false);
     }
 
-    // Keep wireDraft active for click-to-connect across components!
-    // The wireDraft is cancelled explicitly if user clicks empty canvas, right-clicks, or presses Escape.
+    if (wireDraft) {
+      // Check if user was dragging wire (distance > 8px from startPos)
+      const dx = wireDraft.currentX - wireDraft.startPos.x;
+      const dy = wireDraft.currentY - wireDraft.startPos.y;
+      if (Math.hypot(dx, dy) > 8) {
+        // Find nearest port on another component within 30px
+        let targetConnection: { compId: string; portId: string } | null = null;
+        let minDistance = 30;
+
+        components.forEach((comp) => {
+          if (comp.id === wireDraft.fromCompId) return;
+          comp.ports.forEach((p) => {
+            const portWorldX = comp.x + p.relativePosition.x;
+            const portWorldY = comp.y + p.relativePosition.y;
+            const dist = Math.hypot(wireDraft.currentX - portWorldX, wireDraft.currentY - portWorldY);
+            if (dist < minDistance) {
+              minDistance = dist;
+              targetConnection = { compId: comp.id, portId: p.id };
+            }
+          });
+        });
+
+        if (targetConnection) {
+          completeWireDraft(targetConnection.compId, targetConnection.portId);
+        }
+      }
+    }
 
     if (draggingCompId) {
       let hasMoved = false;
@@ -378,29 +403,23 @@ export const Canvas: React.FC = () => {
     e.stopPropagation();
 
     if (wireDraft) {
-      if (port.type === 'input') {
+      if (wireDraft.fromCompId !== comp.id) {
         completeWireDraft(comp.id, port.id);
-      } else if (port.type === 'output') {
-        // Switch wire draft start origin to this output port
-        const startX = comp.x + port.relativePosition.x;
-        const startY = comp.y + port.relativePosition.y;
-        startWireDraft(comp.id, port.id, { x: startX, y: startY });
       } else {
         cancelWireDraft();
       }
       return;
     }
 
-    if (port.type === 'output') {
-      const startX = comp.x + port.relativePosition.x;
-      const startY = comp.y + port.relativePosition.y;
-      startWireDraft(comp.id, port.id, { x: startX, y: startY });
-    }
+    // Start wire draft from ANY port (input OR output)
+    const startX = comp.x + port.relativePosition.x;
+    const startY = comp.y + port.relativePosition.y;
+    startWireDraft(comp.id, port.id, { x: startX, y: startY });
   };
 
   const handlePortMouseUp = (e: React.MouseEvent, comp: CircuitComponent, port: Port) => {
     e.stopPropagation();
-    if (wireDraft && port.type === 'input' && wireDraft.fromCompId !== comp.id) {
+    if (wireDraft && wireDraft.fromCompId !== comp.id) {
       completeWireDraft(comp.id, port.id);
     }
   };
@@ -562,21 +581,19 @@ export const Canvas: React.FC = () => {
         const lastTouch = touchStateRef.current.lastTouchPos;
         const canvasReleasePos = screenToCanvas(lastTouch.x, lastTouch.y);
 
-        // Find nearest input port within generous touch tolerance threshold (45px)
+        // Find nearest port within generous touch tolerance threshold (45px)
         let targetConnection: { compId: string; portId: string } | null = null;
         let minDistance = 45;
 
         components.forEach((comp) => {
           if (comp.id === wireDraft.fromCompId) return; // Prevent self-loop
           comp.ports.forEach((port) => {
-            if (port.type === 'input') {
-              const portWorldX = comp.x + port.relativePosition.x;
-              const portWorldY = comp.y + port.relativePosition.y;
-              const dist = Math.hypot(canvasReleasePos.x - portWorldX, canvasReleasePos.y - portWorldY);
-              if (dist < minDistance) {
-                minDistance = dist;
-                targetConnection = { compId: comp.id, portId: port.id };
-              }
+            const portWorldX = comp.x + port.relativePosition.x;
+            const portWorldY = comp.y + port.relativePosition.y;
+            const dist = Math.hypot(canvasReleasePos.x - portWorldX, canvasReleasePos.y - portWorldY);
+            if (dist < minDistance) {
+              minDistance = dist;
+              targetConnection = { compId: comp.id, portId: port.id };
             }
           });
         });

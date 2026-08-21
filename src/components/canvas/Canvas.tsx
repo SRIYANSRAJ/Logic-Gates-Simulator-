@@ -307,6 +307,8 @@ export const Canvas: React.FC = () => {
         components.forEach((comp) => {
           if (comp.id === wireDraft.fromCompId) return;
           comp.ports.forEach((p) => {
+            // Strictly target INPUT ports only for one-way connection
+            if (p.type !== 'input') return;
             const portWorldX = comp.x + p.relativePosition.x;
             const portWorldY = comp.y + p.relativePosition.y;
             const dist = Math.hypot(wireDraft.currentX - portWorldX, wireDraft.currentY - portWorldY);
@@ -398,12 +400,13 @@ export const Canvas: React.FC = () => {
     setDragInitialPositions(initMap);
   };
 
-  // Port Wire Connection (Mouse Click & Drag)
+  // Port Wire Connection (Mouse Click & Drag) - Strictly One-Way: Output -> Input
   const handlePortMouseDown = (e: React.MouseEvent, comp: CircuitComponent, port: Port) => {
     e.stopPropagation();
 
     if (wireDraft) {
-      if (wireDraft.fromCompId !== comp.id) {
+      // Releasing / clicking on an INPUT port completes the wire draft
+      if (port.type === 'input' && wireDraft.fromCompId !== comp.id) {
         completeWireDraft(comp.id, port.id);
       } else {
         cancelWireDraft();
@@ -411,15 +414,18 @@ export const Canvas: React.FC = () => {
       return;
     }
 
-    // Start wire draft from ANY port (input OR output)
-    const startX = comp.x + port.relativePosition.x;
-    const startY = comp.y + port.relativePosition.y;
-    startWireDraft(comp.id, port.id, { x: startX, y: startY });
+    // STRICT ONE-WAY: Wiring can ONLY initiate from OUTPUT ports!
+    if (port.type === 'output') {
+      const startX = comp.x + port.relativePosition.x;
+      const startY = comp.y + port.relativePosition.y;
+      startWireDraft(comp.id, port.id, { x: startX, y: startY });
+    }
   };
 
   const handlePortMouseUp = (e: React.MouseEvent, comp: CircuitComponent, port: Port) => {
     e.stopPropagation();
-    if (wireDraft && wireDraft.fromCompId !== comp.id) {
+    // Complete wire draft strictly on INPUT ports
+    if (wireDraft && port.type === 'input' && wireDraft.fromCompId !== comp.id) {
       completeWireDraft(comp.id, port.id);
     }
   };
@@ -588,6 +594,8 @@ export const Canvas: React.FC = () => {
         components.forEach((comp) => {
           if (comp.id === wireDraft.fromCompId) return; // Prevent self-loop
           comp.ports.forEach((port) => {
+            // Strictly target INPUT ports only for one-way connection
+            if (port.type !== 'input') return;
             const portWorldX = comp.x + port.relativePosition.x;
             const portWorldY = comp.y + port.relativePosition.y;
             const dist = Math.hypot(canvasReleasePos.x - portWorldX, canvasReleasePos.y - portWorldY);
@@ -794,6 +802,10 @@ export const Canvas: React.FC = () => {
             const wireVal = simulationState.wireValues[wire.id] ?? 0;
             const isSelected = selection.wireIds.includes(wire.id);
 
+            const hasBranches = wires.filter(
+              (w) => w.fromComponentId === wire.fromComponentId && w.fromPortId === wire.fromPortId
+            ).length > 1;
+
             return (
               <WireRenderer
                 key={wire.id}
@@ -804,6 +816,7 @@ export const Canvas: React.FC = () => {
                 isSelected={isSelected}
                 routingMode={wireRoutingMode}
                 signalAnimation={signalAnimation}
+                hasBranches={hasBranches}
                 onSelect={(e) => {
                   e.stopPropagation();
                   selectWire(wire.id, e.shiftKey);
@@ -811,6 +824,16 @@ export const Canvas: React.FC = () => {
                 onDelete={() => removeWire(wire.id)}
                 onBranchWire={(pos) => {
                   startWireDraft(wire.fromComponentId, wire.fromPortId, pos);
+                }}
+                onStartWireBranch={(e, pos) => {
+                  e.stopPropagation();
+                  let canvasPos = pos;
+                  if ('clientX' in e) {
+                    canvasPos = screenToCanvas(e.clientX, e.clientY);
+                  } else if ('touches' in e && e.touches.length > 0) {
+                    canvasPos = screenToCanvas(e.touches[0].clientX, e.touches[0].clientY);
+                  }
+                  startWireDraft(wire.fromComponentId, wire.fromPortId, canvasPos);
                 }}
               />
             );

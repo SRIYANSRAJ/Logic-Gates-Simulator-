@@ -234,45 +234,73 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
 
       case 'SWITCH': {
         const val = component.internalState?.value ?? 0;
+        const isOn = val === 1;
         return (
           <g
-            className="cursor-pointer"
+            className="cursor-pointer select-none group/switch"
             onClick={(e) => {
               e.stopPropagation();
               onToggleSwitch?.(e as any);
             }}
           >
+            {/* Outer Sleek Matte Bezel Chassis */}
             <rect
-              x={5}
-              y={5}
-              width={width - 10}
-              height={height - 10}
-              rx={8}
-              fill={val === 1 ? activeTheme.inputActiveFill : activeTheme.gateInactiveFill}
-              stroke={val === 1 ? activeTheme.inputActiveStroke : isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
-              strokeWidth={2}
+              x={3}
+              y={6}
+              width={width - 6}
+              height={height - 12}
+              rx={12}
+              fill="#090d16"
+              stroke={isSelected ? '#60a5fa' : isOn ? activeTheme.inputActiveStroke : '#334155'}
+              strokeWidth={isSelected ? 2 : 1.5}
+              className="transition-colors duration-200"
             />
-            {/* Switch Toggle Knob */}
-            <circle
-              cx={val === 1 ? width - 20 : 20}
-              cy={height / 2}
-              r={12}
-              fill={val === 1 ? activeTheme.inputKnobActive : '#64748b'}
-              stroke="#0f172a"
-              strokeWidth={2}
-              className="transition-all duration-150 shadow-md"
+            {/* Inner Recessed Switch Track */}
+            <rect
+              x={6}
+              y={9}
+              width={width - 12}
+              height={height - 18}
+              rx={9}
+              fill={isOn ? activeTheme.inputActiveFill : '#020617'}
+              stroke={isOn ? activeTheme.inputActiveStroke : '#1e293b'}
+              strokeWidth={1}
+              className="transition-all duration-200"
             />
+            {/* Binary State Text (0 / 1) cleanly positioned on non-knob side */}
             <text
-              x={val === 1 ? 20 : width - 20}
-              y={height / 2 + 4}
+              x={isOn ? 16 : width - 16}
+              y={height / 2}
+              dominantBaseline="central"
               textAnchor="middle"
-              fill="#cbd5e1"
+              fill={isOn ? activeTheme.secondaryColor : '#64748b'}
               fontSize={11}
               fontWeight="bold"
-              className="pointer-events-none font-mono"
+              fontFamily="monospace"
+              className="pointer-events-none select-none opacity-90"
             >
-              {val}
+              {isOn ? '1' : '0'}
             </text>
+            {/* Ergonomic Switch Slider Knob with Tactile Grips */}
+            <g
+              transform={`translate(${isOn ? width - 23 : 9}, ${11})`}
+              className="transition-transform duration-200"
+            >
+              <rect
+                x={0}
+                y={0}
+                width={14}
+                height={height - 22}
+                rx={6}
+                fill={isOn ? activeTheme.inputKnobActive : '#cbd5e1'}
+                stroke="#0f172a"
+                strokeWidth={1.5}
+                className="shadow-md"
+              />
+              {/* Tactile Grip Lines */}
+              <line x1={4.5} y1={6} x2={4.5} y2={height - 28} stroke={isOn ? '#0f172a' : '#64748b'} strokeWidth={1} strokeLinecap="round" />
+              <line x1={9.5} y1={6} x2={9.5} y2={height - 28} stroke={isOn ? '#0f172a' : '#64748b'} strokeWidth={1} strokeLinecap="round" />
+            </g>
           </g>
         );
       }
@@ -281,7 +309,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         const pressed = component.internalState?.pressed ?? false;
         return (
           <g
-            className="cursor-pointer"
+            className="cursor-pointer select-none group/btn"
             onPointerDown={(e) => {
               (e.target as Element).setPointerCapture(e.pointerId);
               onPressButton?.(true);
@@ -294,33 +322,48 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               onPressButton?.(false);
             }}
           >
+            {/* Outer Chassis */}
             <rect
-              x={5}
+              x={3}
               y={5}
-              width={width - 10}
+              width={width - 6}
               height={height - 10}
-              rx={10}
-              fill={activeTheme.gateInactiveFill}
-              stroke={pressed ? activeTheme.inputActiveStroke : isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
-              strokeWidth={2}
+              rx={12}
+              fill="#090d16"
+              stroke={isSelected ? '#60a5fa' : pressed ? activeTheme.inputActiveStroke : '#334155'}
+              strokeWidth={isSelected ? 2 : 1.5}
+              className="transition-colors duration-150"
             />
+            {/* Outer Chamfer Ring */}
             <circle
               cx={width / 2}
               cy={height / 2}
-              r={pressed ? 14 : 16}
-              fill={pressed ? activeTheme.inputKnobActive : '#e11d48'}
-              stroke="#0f172a"
-              strokeWidth={2}
-              className="transition-all duration-100 shadow-md"
+              r={17}
+              fill="#020617"
+              stroke="#1e293b"
+              strokeWidth={1.5}
             />
+            {/* Push Button Center Actuator with Tactile Feedback */}
+            <circle
+              cx={width / 2}
+              cy={height / 2}
+              r={pressed ? 12 : 14}
+              fill={pressed ? activeTheme.inputKnobActive : '#ef4444'}
+              stroke={pressed ? activeTheme.inputActiveStroke : '#991b1b'}
+              strokeWidth={2}
+              className="transition-all duration-75 shadow-lg"
+            />
+            {/* Crisp Push Button Label */}
             <text
               x={width / 2}
-              y={height / 2 + 3.5}
+              y={height / 2}
+              dominantBaseline="central"
               textAnchor="middle"
               fill="#ffffff"
-              fontSize={9}
-              fontWeight="bold"
-              className="pointer-events-none"
+              fontSize={8.5}
+              fontWeight="800"
+              fontFamily="sans-serif"
+              className="pointer-events-none select-none tracking-wider"
             >
               {pressed ? '1' : 'PUSH'}
             </text>
@@ -828,6 +871,24 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   const labelText = component.label?.trim() || '';
   const showLabelBadge = !!labelText;
 
+  // Only complex ICs and multi-pin devices need internal pin labels (prevents collision on standard gates and switches)
+  const showInternalPinLabels = [
+    'D_FLIP_FLOP',
+    'JK_FLIP_FLOP',
+    'T_FLIP_FLOP',
+    'SR_LATCH',
+    'FULL_ADDER',
+    'HALF_ADDER',
+    'ALU_4BIT',
+    'MUX_4TO1',
+    'DEMUX_1TO4',
+    'COUNTER_4BIT',
+    'REGISTER_4BIT',
+    'CUSTOM_IC',
+    'SEGMENT_7',
+    'TRI_STATE_BUFFER',
+  ].includes(component.type);
+
   return (
     <g
       id={component.id}
@@ -839,36 +900,37 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       {/* Component Outer Body */}
       {renderGateShape()}
 
-      {/* Dynamic Name / Label Badge (e.g. inp 1, inp 2, clk 1, etc.) */}
+      {/* Dynamic Custom Label Badge (cleanly centered, crisp typography) */}
       {showLabelBadge && (
         <g transform={`translate(${width / 2}, ${-13})`}>
           <rect
-            x={-14 - (labelText.length * 3.5)}
-            y={-8}
-            width={28 + (labelText.length * 7)}
-            height={16}
-            rx={8}
-            fill={isSelfActive ? activeTheme.badgeActiveBg : activeTheme.panelBg}
-            stroke={isSelfActive ? activeTheme.badgeActiveBorder : isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
-            strokeWidth={1.5}
-            className="opacity-95 shadow-md"
+            x={-Math.max(14, labelText.length * 3.6 + 7)}
+            y={-9}
+            width={Math.max(28, labelText.length * 7.2 + 14)}
+            height={18}
+            rx={5}
+            fill={isSelfActive ? activeTheme.badgeActiveBg : '#0b1120'}
+            stroke={isSelfActive ? activeTheme.badgeActiveBorder : isSelected ? '#60a5fa' : '#334155'}
+            strokeWidth={1.2}
+            className="shadow-md"
           />
           <text
             x={0}
-            y={3}
+            y={0}
+            dominantBaseline="central"
             textAnchor="middle"
             fill={isSelfActive ? activeTheme.badgeActiveText : '#e2e8f0'}
             fontSize={9.5}
-            fontWeight="bold"
-            fontFamily="monospace"
-            className="pointer-events-none tracking-wide"
+            fontWeight="600"
+            fontFamily="sans-serif"
+            className="pointer-events-none select-none tracking-wide"
           >
             {labelText}
           </text>
         </g>
       )}
 
-      {/* Connection Ports (Pins) */}
+      {/* Connection Ports (Pins) - Rendered as crisp horizontal pin leads and terminal bars instead of circles */}
       {component.ports.map((port) => {
         const val = portValues[port.id];
         let portColor = activeTheme.portInactiveColor;
@@ -878,6 +940,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
 
         const px = port.relativePosition.x;
         const py = port.relativePosition.y;
+        const isOutput = port.type === 'output';
+        const isInput = port.type === 'input';
+        const isTargetCandidate = Boolean(wireDraft) && isInput && wireDraft?.fromCompId !== component.id;
 
         return (
           <g
@@ -885,7 +950,7 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
             data-comp-id={component.id}
             data-port-id={port.id}
             data-port-type={port.type}
-            className="cursor-crosshair group/port"
+            className={`${isOutput ? 'cursor-crosshair' : isTargetCandidate ? 'cursor-crosshair' : 'cursor-default'} group/port`}
             onMouseDown={(e) => {
               e.stopPropagation();
               onPortMouseDown(e, port);
@@ -899,44 +964,98 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               onPortTouchStart?.(e, port);
             }}
           >
-            {/* Magnetic Touch Target & Hover Ring (Expanded for easy touch and click interaction) */}
-            <circle
-              cx={px}
-              cy={py}
-              r={24}
-              fill="rgba(0,0,0,0.01)"
+            {/* Magnetic Touch & Click Area (Generous touch target for tablets and desktop) */}
+            <rect
+              x={isInput ? px - 18 : px - 4}
+              y={py - 14}
+              width={24}
+              height={28}
+              fill="transparent"
               style={{ pointerEvents: 'all' }}
             />
-            <circle
-              cx={px}
-              cy={py}
-              r={12}
-              fill="transparent"
+
+            {/* Hover / Drop Target Indicator Pill */}
+            <rect
+              x={isInput ? px - 14 : px - 2}
+              y={py - 7}
+              width={16}
+              height={14}
+              rx={3}
+              fill={isTargetCandidate ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.15)'}
               stroke="#60a5fa"
-              strokeWidth={2}
-              className="opacity-0 group-hover/port:opacity-100 transition-opacity hidden md:block"
+              strokeWidth={isTargetCandidate ? 1.5 : 1}
+              className={
+                isTargetCandidate
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover/port:opacity-100 transition-opacity hidden md:block'
+              }
             />
-            {/* Port Pin Connection Circle */}
-            <circle
-              cx={px}
-              cy={py}
-              r={4.5}
-              fill={portColor}
-              stroke="#0f172a"
-              strokeWidth={1.5}
-            />
-            {/* Port Name Mini Label */}
-            <text
-              x={port.type === 'input' ? px + 8 : px - 8}
-              y={py + 3}
-              textAnchor={port.type === 'input' ? 'start' : 'end'}
-              fill="#94a3b8"
-              fontSize={8}
-              fontWeight="bold"
-              className="pointer-events-none opacity-80"
-            >
-              {port.name}
-            </text>
+
+            {/* Horizontal Terminal Pin Leads & Terminal Tabs (NO circles, preventing inverter bubble confusion) */}
+            {isInput ? (
+              <g className="transition-colors duration-150">
+                {/* Horizontal Pin Lead Line */}
+                <line
+                  x1={px - 10}
+                  y1={py}
+                  x2={px}
+                  y2={py}
+                  stroke={portColor}
+                  strokeWidth={2.5}
+                  strokeLinecap="square"
+                />
+                {/* Vertical Terminal Contact Bar */}
+                <line
+                  x1={px - 10}
+                  y1={py - 4}
+                  x2={px - 10}
+                  y2={py + 4}
+                  stroke={portColor}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+              </g>
+            ) : (
+              <g className="transition-colors duration-150">
+                {/* Horizontal Pin Lead Line (Output source) */}
+                <line
+                  x1={px}
+                  y1={py}
+                  x2={px + 10}
+                  y2={py}
+                  stroke={portColor}
+                  strokeWidth={2.5}
+                  strokeLinecap="square"
+                />
+                {/* Vertical Terminal Contact Bar / Source Tab */}
+                <line
+                  x1={px + 10}
+                  y1={py - 4}
+                  x2={px + 10}
+                  y2={py + 4}
+                  stroke={portColor}
+                  strokeWidth={2.2}
+                  strokeLinecap="round"
+                />
+              </g>
+            )}
+
+            {/* Clean Port Name Label (rendered cleanly on ICs / multi-pin chips without gate collision) */}
+            {showInternalPinLabels && (
+              <text
+                x={isInput ? px + 8 : px - 8}
+                y={py}
+                dominantBaseline="central"
+                textAnchor={isInput ? 'start' : 'end'}
+                fill={isTargetCandidate ? '#60a5fa' : '#94a3b8'}
+                fontSize={8.5}
+                fontWeight="bold"
+                fontFamily="sans-serif"
+                className="pointer-events-none opacity-90 select-none"
+              >
+                {port.name}
+              </text>
+            )}
           </g>
         );
       })}

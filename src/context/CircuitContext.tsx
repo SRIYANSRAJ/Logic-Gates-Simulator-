@@ -692,9 +692,17 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelection({ componentIds: compIds, wireIds });
   }, []);
 
-  // Wire Connections
+  // Wire Connections - Strictly Enforced Output -> Input One-Way Wiring for Zero Error Rate
   const startWireDraft = useCallback(
     (compId: string, portId: string, startPos: { x: number; y: number }) => {
+      const comp = components.find((c) => c.id === compId);
+      const port = comp?.ports.find((p) => p.id === portId);
+
+      // Enforce: Wiring can ONLY start from an OUTPUT port
+      if (port && port.type !== 'output') {
+        return;
+      }
+
       setWireDraft({
         fromCompId: compId,
         fromPortId: portId,
@@ -703,7 +711,7 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentY: startPos.y,
       });
     },
-    []
+    [components]
   );
 
   const updateWireDraft = useCallback((x: number, y: number) => {
@@ -728,36 +736,30 @@ export const CircuitProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const fromPort = fromComp.ports.find((p) => p.id === wireDraft.fromPortId);
       const targetPort = targetComp.ports.find((p) => p.id === targetPortId);
 
-      let sourceCompId = wireDraft.fromCompId;
-      let sourcePortId = wireDraft.fromPortId;
-      let destCompId = targetCompId;
-      let destPortId = targetPortId;
-
-      // If user dragged from an input port to an output port, orient wire output -> input
-      if (fromPort?.type === 'input' && targetPort?.type === 'output') {
-        sourceCompId = targetCompId;
-        sourcePortId = targetPortId;
-        destCompId = wireDraft.fromCompId;
-        destPortId = wireDraft.fromPortId;
+      // Strict Validation: From MUST be OUTPUT, Target MUST be INPUT
+      if (fromPort?.type !== 'output' || targetPort?.type !== 'input') {
+        setWireDraft(null);
+        return;
       }
 
-      // Check if wire already exists in either direction
+      const sourceCompId = wireDraft.fromCompId;
+      const sourcePortId = wireDraft.fromPortId;
+      const destCompId = targetCompId;
+      const destPortId = targetPortId;
+
+      // Check if this exact wire already exists
       const existing = wires.find(
         (w) =>
-          (w.fromComponentId === sourceCompId &&
-            w.fromPortId === sourcePortId &&
-            w.toComponentId === destCompId &&
-            w.toPortId === destPortId) ||
-          (w.fromComponentId === destCompId &&
-            w.fromPortId === destPortId &&
-            w.toComponentId === sourceCompId &&
-            w.toPortId === sourcePortId)
+          w.fromComponentId === sourceCompId &&
+          w.fromPortId === sourcePortId &&
+          w.toComponentId === destCompId &&
+          w.toPortId === destPortId
       );
 
       if (!existing) {
         recordHistory(components, wires);
         const newWire: Wire = {
-          id: `wire_${Date.now()}_${Math.random()}`,
+          id: `wire_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           fromComponentId: sourceCompId,
           fromPortId: sourcePortId,
           toComponentId: destCompId,

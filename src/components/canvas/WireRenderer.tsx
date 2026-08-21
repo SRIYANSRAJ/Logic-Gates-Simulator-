@@ -16,9 +16,11 @@ interface WireRendererProps {
   isSelected: boolean;
   routingMode: 'orthogonal' | 'curved' | 'straight';
   signalAnimation: boolean;
+  hasBranches?: boolean;
   onSelect: (e: React.MouseEvent) => void;
   onDelete: () => void;
   onBranchWire?: (pos: { x: number; y: number }) => void;
+  onStartWireBranch?: (e: React.MouseEvent | React.TouchEvent, pos: { x: number; y: number }) => void;
 }
 
 export const WireRenderer: React.FC<WireRendererProps> = ({
@@ -29,11 +31,13 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
   isSelected,
   routingMode,
   signalAnimation,
+  hasBranches,
   onSelect,
   onDelete,
   onBranchWire,
+  onStartWireBranch,
 }) => {
-  const { theme } = useCircuit();
+  const { theme, wireDraft } = useCircuit();
   const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
 
   // Find ports
@@ -106,14 +110,24 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
 
   return (
     <g className="cursor-pointer group">
-      {/* Invisible thick stroke for easier clicking, hovering and branching */}
+      {/* Invisible thick stroke for easy wire selecting, hovering, dragging, and branching */}
       <path
         d={pathD}
         fill="none"
         stroke="transparent"
-        strokeWidth={18}
+        strokeWidth={20}
         className="pointer-events-auto"
         onClick={onSelect}
+        onMouseDown={(e) => {
+          if (!wireDraft && e.button === 0 && onStartWireBranch) {
+            onStartWireBranch(e, midPoint);
+          }
+        }}
+        onTouchStart={(e) => {
+          if (!wireDraft && onStartWireBranch) {
+            onStartWireBranch(e, midPoint);
+          }
+        }}
         onDoubleClick={(e) => {
           e.stopPropagation();
           onBranchWire?.(midPoint);
@@ -157,56 +171,30 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
         />
       )}
 
-      {/* Floating Action Controls on Selected Wire */}
-      {isSelected && (
-        <g transform={`translate(${midPoint.x}, ${midPoint.y})`} className="select-none pointer-events-auto">
-          {/* Branch Wire Button (+) */}
-          <g
-            className="cursor-pointer group/branch"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBranchWire?.(midPoint);
-            }}
-            title="Branch Wire (+)"
-          >
-            <circle cx={-15} cy={0} r={12} fill="#10b981" className="group-hover/branch:fill-emerald-600 transition-colors shadow-xl" />
-            <text
-              x={-15}
-              y={4.5}
-              textAnchor="middle"
-              fill="#ffffff"
-              fontSize={14}
-              fontWeight="bold"
-              className="pointer-events-none"
-            >
-              +
-            </text>
-          </g>
-
-          {/* Delete Wire Button (✕) */}
-          <g
-            className="cursor-pointer group/del"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            title="Delete Wire (Del / Backspace)"
-          >
-            <circle cx={15} cy={0} r={12} fill="#ef4444" className="group-hover/del:fill-red-600 transition-colors shadow-xl" />
-            <text
-              x={15}
-              y={4}
-              textAnchor="middle"
-              fill="#ffffff"
-              fontSize={12}
-              fontWeight="bold"
-              className="pointer-events-none"
-            >
-              ✕
-            </text>
-          </g>
-        </g>
+      {/* Electrical Schematic Junction Solder Dot (rendered when multiple wires branch from source) */}
+      {hasBranches && (
+        <circle
+          cx={start.x + 10}
+          cy={start.y}
+          r={3.8}
+          fill={strokeColor}
+          stroke="#0f172a"
+          strokeWidth={1.5}
+          className="pointer-events-none transition-colors duration-150"
+        />
       )}
+
+      {/* Wire Branch Hover Node Indicator (allows visual tapping into wire) */}
+      <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none hidden md:block">
+        <circle
+          cx={midPoint.x}
+          cy={midPoint.y}
+          r={5}
+          fill="#3b82f6"
+          stroke="#ffffff"
+          strokeWidth={1.5}
+        />
+      </g>
     </g>
   );
 };

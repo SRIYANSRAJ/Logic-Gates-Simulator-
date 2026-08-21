@@ -221,7 +221,23 @@ export const Canvas: React.FC = () => {
       return;
     }
 
+    // Right Click -> Cancel/unlock wire drafting immediately
+    if (e.button === 2) {
+      if (wireDraft) {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelWireDraft();
+        return;
+      }
+    }
+
     if (e.button === 0) {
+      // If clicking on empty canvas while drafting wire, cancel it
+      if (wireDraft) {
+        cancelWireDraft();
+        return;
+      }
+
       // Left click on canvas background: start Box Marquee Selection
       const canvasPos = screenToCanvas(e.clientX, e.clientY);
       setIsBoxSelecting(true);
@@ -279,9 +295,8 @@ export const Canvas: React.FC = () => {
       setIsPanning(false);
     }
 
-    if (wireDraft) {
-      cancelWireDraft();
-    }
+    // Keep wireDraft active for click-to-connect across components!
+    // The wireDraft is cancelled explicitly if user clicks empty canvas, right-clicks, or presses Escape.
 
     if (draggingCompId) {
       let hasMoved = false;
@@ -358,13 +373,18 @@ export const Canvas: React.FC = () => {
     setDragInitialPositions(initMap);
   };
 
-  // Port Wire Connection (Mouse)
+  // Port Wire Connection (Mouse Click & Drag)
   const handlePortMouseDown = (e: React.MouseEvent, comp: CircuitComponent, port: Port) => {
     e.stopPropagation();
 
     if (wireDraft) {
       if (port.type === 'input') {
         completeWireDraft(comp.id, port.id);
+      } else if (port.type === 'output') {
+        // Switch wire draft start origin to this output port
+        const startX = comp.x + port.relativePosition.x;
+        const startY = comp.y + port.relativePosition.y;
+        startWireDraft(comp.id, port.id, { x: startX, y: startY });
       } else {
         cancelWireDraft();
       }
@@ -375,6 +395,13 @@ export const Canvas: React.FC = () => {
       const startX = comp.x + port.relativePosition.x;
       const startY = comp.y + port.relativePosition.y;
       startWireDraft(comp.id, port.id, { x: startX, y: startY });
+    }
+  };
+
+  const handlePortMouseUp = (e: React.MouseEvent, comp: CircuitComponent, port: Port) => {
+    e.stopPropagation();
+    if (wireDraft && port.type === 'input' && wireDraft.fromCompId !== comp.id) {
+      completeWireDraft(comp.id, port.id);
     }
   };
 
@@ -657,6 +684,10 @@ export const Canvas: React.FC = () => {
   // Context Menu Handler
   const handleContextMenu = (e: React.MouseEvent, compId?: string) => {
     e.preventDefault();
+    if (wireDraft) {
+      cancelWireDraft();
+      return;
+    }
     if (compId) {
       setContextMenu({ x: e.clientX, y: e.clientY, componentId: compId });
     }
@@ -798,6 +829,7 @@ export const Canvas: React.FC = () => {
                   onMouseDown={(e) => handleComponentMouseDown(e, comp)}
                   onTouchStart={(e) => handleComponentTouchStart(e, comp)}
                   onPortMouseDown={(e, port) => handlePortMouseDown(e, comp, port)}
+                  onPortMouseUp={(e, port) => handlePortMouseUp(e, comp, port)}
                   onPortTouchStart={(e, port) => handlePortTouchStart(e, comp, port)}
                   onToggleSwitch={() => toggleSwitch(comp.id)}
                   onPressButton={(pressed) => pressButton(comp.id, pressed)}

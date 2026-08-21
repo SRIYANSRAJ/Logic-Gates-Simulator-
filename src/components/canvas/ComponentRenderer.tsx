@@ -16,6 +16,7 @@ interface ComponentRendererProps {
   onMouseDown: (e: React.MouseEvent) => void;
   onTouchStart?: (e: React.TouchEvent) => void;
   onPortMouseDown: (e: React.MouseEvent, port: Port) => void;
+  onPortMouseUp?: (e: React.MouseEvent, port: Port) => void;
   onPortTouchStart?: (e: React.TouchEvent, port: Port) => void;
   onToggleSwitch?: (e: React.MouseEvent | React.TouchEvent) => void;
   onPressButton?: (pressed: boolean) => void;
@@ -29,12 +30,13 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
   onMouseDown,
   onTouchStart,
   onPortMouseDown,
+  onPortMouseUp,
   onPortTouchStart,
   onToggleSwitch,
   onPressButton,
   onTriggerPulse,
 }) => {
-  const { theme } = useCircuit();
+  const { theme, wireDraft } = useCircuit();
   const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.emerald;
 
   const meta = COMPONENT_METADATA[component.type] || COMPONENT_METADATA.AND;
@@ -412,8 +414,9 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         );
 
       case 'LED': {
-        const inVal = portValues[component.ports[0]?.id] ?? 0;
-        const isOn = inVal === 1;
+        const inPort = component.ports[0]?.id || 'in_0';
+        const inVal = portValues[inPort] ?? component.internalState?.currentValue ?? 0;
+        const isOn = inVal === 1 || inVal === '1';
         return (
           <g>
             {/* Glow halo when ON */}
@@ -472,22 +475,44 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
       }
 
       case 'PROBE': {
-        const inVal = portValues[component.ports[0]?.id] ?? 0;
+        const inPort = component.ports[0]?.id || 'in_0';
+        const inVal = portValues[inPort] ?? component.internalState?.currentValue ?? 0;
         let badgeColor = activeTheme.gateInactiveFill;
         let textColor = '#94a3b8';
-        if (inVal === 1) {
+        let strokeColor = activeTheme.gateInactiveStroke;
+        
+        if (inVal === 1 || inVal === '1') {
           badgeColor = activeTheme.probeActiveBg;
           textColor = activeTheme.probeActiveText;
+          strokeColor = activeTheme.inputActiveStroke;
         } else if (inVal === 'Z') {
-          badgeColor = '#78350f';
+          badgeColor = '#451a03';
           textColor = '#fbbf24';
+          strokeColor = '#d97706';
         } else if (inVal === 'X') {
-          badgeColor = '#881337';
+          badgeColor = '#4c0519';
           textColor = '#f43f5e';
+          strokeColor = '#e11d48';
+        } else {
+          badgeColor = '#0f172a';
+          textColor = '#64748b';
+          strokeColor = '#334155';
         }
 
         return (
           <g>
+            {/* Glowing active outline */}
+            {(inVal === 1 || inVal === '1') && (
+              <rect
+                x={3}
+                y={3}
+                width={width - 6}
+                height={height - 6}
+                rx={10}
+                fill={activeTheme.ledGlowColor}
+                className="animate-pulse opacity-60"
+              />
+            )}
             <rect
               x={5}
               y={5}
@@ -495,17 +520,17 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               height={height - 10}
               rx={8}
               fill={badgeColor}
-              stroke={isSelected ? '#60a5fa' : inVal === 1 ? activeTheme.inputActiveStroke : activeTheme.gateInactiveStroke}
-              strokeWidth={2}
+              stroke={isSelected ? '#60a5fa' : strokeColor}
+              strokeWidth={isSelected ? 2.5 : 2}
             />
             <text
               x={width / 2}
               y={height / 2 + 6}
               textAnchor="middle"
               fill={textColor}
-              fontSize={18}
+              fontSize={20}
               fontWeight="bold"
-              className="font-mono"
+              className="font-mono select-none"
             >
               {inVal}
             </text>
@@ -513,34 +538,241 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         );
       }
 
-      case 'HEX_DISPLAY':
-      case 'DECIMAL_DISPLAY': {
-        const hexVal = component.internalState?.hexValue ?? '0';
+      case 'SEGMENT_7': {
+        const segInputs: Record<string, boolean> = {
+          a: (portValues['in_a'] ?? component.internalState?.segments?.a) === 1,
+          b: (portValues['in_b'] ?? component.internalState?.segments?.b) === 1,
+          c: (portValues['in_c'] ?? component.internalState?.segments?.c) === 1,
+          d: (portValues['in_d'] ?? component.internalState?.segments?.d) === 1,
+          e: (portValues['in_e'] ?? component.internalState?.segments?.e) === 1,
+          f: (portValues['in_f'] ?? component.internalState?.segments?.f) === 1,
+          g: (portValues['in_g'] ?? component.internalState?.segments?.g) === 1,
+          dp: (portValues['in_dp'] ?? component.internalState?.segments?.dp) === 1,
+        };
+
+        const onFill = activeTheme.inputKnobActive || '#10b981';
+        const offFill = '#1e293b';
+        const offStroke = '#0f172a';
+
+        return (
+          <g>
+            {/* Display Enclosure */}
+            <rect
+              x={16}
+              y={5}
+              width={width - 20}
+              height={height - 10}
+              rx={6}
+              fill="#090d16"
+              stroke={isSelected ? '#60a5fa' : '#334155'}
+              strokeWidth={2}
+            />
+
+            {/* 7 Segments (a, b, c, d, e, f, g) */}
+            {/* Segment a (top) */}
+            <polygon
+              points="34,14 58,14 54,19 38,19"
+              fill={segInputs.a ? onFill : offFill}
+              stroke={segInputs.a ? onFill : offStroke}
+              strokeWidth={1}
+            />
+            {/* Segment b (top-right) */}
+            <polygon
+              points="59,16 63,20 59,45 55,42"
+              fill={segInputs.b ? onFill : offFill}
+              stroke={segInputs.b ? onFill : offStroke}
+              strokeWidth={1}
+            />
+            {/* Segment c (bottom-right) */}
+            <polygon
+              points="58,52 62,55 58,80 54,76"
+              fill={segInputs.c ? onFill : offFill}
+              stroke={segInputs.c ? onFill : offStroke}
+              strokeWidth={1}
+            />
+            {/* Segment d (bottom) */}
+            <polygon
+              points="34,82 54,82 50,77 38,77"
+              fill={segInputs.d ? onFill : offFill}
+              stroke={segInputs.d ? onFill : offStroke}
+              strokeWidth={1}
+            />
+            {/* Segment e (bottom-left) */}
+            <polygon
+              points="33,52 37,55 33,80 29,76"
+              fill={segInputs.e ? onFill : offFill}
+              stroke={segInputs.e ? onFill : offStroke}
+              strokeWidth={1}
+            />
+            {/* Segment f (top-left) */}
+            <polygon
+              points="34,16 38,20 34,45 30,42"
+              fill={segInputs.f ? onFill : offFill}
+              stroke={segInputs.f ? onFill : offStroke}
+              strokeWidth={1}
+            />
+            {/* Segment g (middle) */}
+            <polygon
+              points="35,48 57,48 53,51 39,51"
+              fill={segInputs.g ? onFill : offFill}
+              stroke={segInputs.g ? onFill : offStroke}
+              strokeWidth={1}
+            />
+
+            {/* Decimal Point (dp) */}
+            <circle
+              cx={67}
+              cy={80}
+              r={3}
+              fill={segInputs.dp ? onFill : offFill}
+              stroke={segInputs.dp ? onFill : offStroke}
+              strokeWidth={1}
+            />
+          </g>
+        );
+      }
+
+      case 'HEX_DISPLAY': {
+        const d3 = portValues['in_3'] === 1 ? 1 : 0;
+        const d2 = portValues['in_2'] === 1 ? 1 : 0;
+        const d1 = portValues['in_1'] === 1 ? 1 : 0;
+        const d0 = portValues['in_0'] === 1 ? 1 : 0;
+        const calcVal = (d3 << 3) | (d2 << 2) | (d1 << 1) | d0;
+        const hexChar = component.internalState?.hexValue ?? calcVal.toString(16).toUpperCase();
+
         return (
           <g>
             <rect
-              x={4}
-              y={4}
-              width={width - 8}
-              height={height - 8}
+              x={16}
+              y={5}
+              width={width - 20}
+              height={height - 10}
               rx={8}
-              fill={activeTheme.canvasBg}
-              stroke={isSelected ? '#60a5fa' : activeTheme.gateInactiveStroke}
+              fill="#090d16"
+              stroke={isSelected ? '#60a5fa' : '#334155'}
               strokeWidth={2}
             />
-            {/* 7 Segment style digit display */}
             <text
-              x={width / 2}
+              x={(width + 12) / 2}
               y={height / 2 + 10}
               textAnchor="middle"
-              fill={activeTheme.displayDigitColor}
-              fontSize={28}
+              fill={activeTheme.displayDigitColor || '#10b981'}
+              fontSize={32}
               fontFamily="monospace"
               fontWeight="bold"
               className={activeTheme.displayDigitGlow}
             >
-              {hexVal}
+              {hexChar}
             </text>
+            <text
+              x={(width + 12) / 2}
+              y={height - 8}
+              textAnchor="middle"
+              fill="#64748b"
+              fontSize={7.5}
+              fontWeight="bold"
+              fontFamily="monospace"
+            >
+              HEX
+            </text>
+          </g>
+        );
+      }
+
+      case 'DECIMAL_DISPLAY': {
+        const d3 = portValues['in_3'] === 1 ? 1 : 0;
+        const d2 = portValues['in_2'] === 1 ? 1 : 0;
+        const d1 = portValues['in_1'] === 1 ? 1 : 0;
+        const d0 = portValues['in_0'] === 1 ? 1 : 0;
+        const calcVal = (d3 << 3) | (d2 << 2) | (d1 << 1) | d0;
+        const decStr = component.internalState?.decValue ?? calcVal.toString(10);
+
+        return (
+          <g>
+            <rect
+              x={16}
+              y={5}
+              width={width - 20}
+              height={height - 10}
+              rx={8}
+              fill="#090d16"
+              stroke={isSelected ? '#60a5fa' : '#334155'}
+              strokeWidth={2}
+            />
+            <text
+              x={(width + 12) / 2}
+              y={height / 2 + 10}
+              textAnchor="middle"
+              fill={activeTheme.displayDigitColor || '#38bdf8'}
+              fontSize={decStr.length > 1 ? 26 : 32}
+              fontFamily="monospace"
+              fontWeight="bold"
+              className={activeTheme.displayDigitGlow}
+            >
+              {decStr}
+            </text>
+            <text
+              x={(width + 12) / 2}
+              y={height - 8}
+              textAnchor="middle"
+              fill="#64748b"
+              fontSize={7.5}
+              fontWeight="bold"
+              fontFamily="monospace"
+            >
+              DEC
+            </text>
+          </g>
+        );
+      }
+
+      case 'BINARY_DISPLAY': {
+        const bits = [
+          portValues['in_3'] === 1 ? 1 : 0,
+          portValues['in_2'] === 1 ? 1 : 0,
+          portValues['in_1'] === 1 ? 1 : 0,
+          portValues['in_0'] === 1 ? 1 : 0,
+        ];
+        const onFill = activeTheme.inputKnobActive || '#10b981';
+
+        return (
+          <g>
+            <rect
+              x={16}
+              y={5}
+              width={width - 20}
+              height={height - 10}
+              rx={6}
+              fill="#090d16"
+              stroke={isSelected ? '#60a5fa' : '#334155'}
+              strokeWidth={2}
+            />
+            {bits.map((bit, idx) => {
+              const cx = 26 + idx * 12;
+              return (
+                <g key={idx}>
+                  <circle
+                    cx={cx}
+                    cy={height / 2 - 4}
+                    r={4.5}
+                    fill={bit === 1 ? onFill : '#1e293b'}
+                    stroke={bit === 1 ? '#ffffff' : '#0f172a'}
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={cx}
+                    y={height / 2 + 14}
+                    textAnchor="middle"
+                    fill={bit === 1 ? '#ffffff' : '#64748b'}
+                    fontSize={8.5}
+                    fontWeight="bold"
+                    fontFamily="monospace"
+                  >
+                    {bit}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         );
       }
@@ -647,6 +879,11 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
         const px = port.relativePosition.x;
         const py = port.relativePosition.y;
 
+        const isWireTargetCandidate =
+          Boolean(wireDraft) &&
+          wireDraft?.fromCompId !== component.id &&
+          port.type === 'input';
+
         return (
           <g
             key={port.id}
@@ -658,12 +895,31 @@ export const ComponentRenderer: React.FC<ComponentRendererProps> = ({
               e.stopPropagation();
               onPortMouseDown(e, port);
             }}
+            onMouseUp={(e) => {
+              e.stopPropagation();
+              onPortMouseUp?.(e, port);
+            }}
             onTouchStart={(e) => {
               e.stopPropagation();
               onPortTouchStart?.(e, port);
             }}
           >
-            {/* Magnetic Touch Target & Hover Ring (Expanded for easy touch interaction) */}
+            {/* Magnetic Target Pulse Ring when Wiring */}
+            {isWireTargetCandidate && (
+              <circle
+                cx={px}
+                cy={py}
+                r={16}
+                fill="rgba(59, 130, 246, 0.2)"
+                stroke="#60a5fa"
+                strokeWidth={1.5}
+                strokeDasharray="3, 3"
+                className="animate-spin"
+                style={{ animationDuration: '4s' }}
+              />
+            )}
+
+            {/* Magnetic Touch Target & Hover Ring (Expanded for easy touch and click interaction) */}
             <circle
               cx={px}
               cy={py}

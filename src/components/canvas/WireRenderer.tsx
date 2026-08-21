@@ -159,7 +159,7 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
 
       {/* Floating Action Controls on Selected Wire */}
       {isSelected && (
-        <g transform={`translate(${midPoint.x}, ${midPoint.y})`} className="select-none">
+        <g transform={`translate(${midPoint.x}, ${midPoint.y})`} className="select-none pointer-events-auto">
           {/* Branch Wire Button (+) */}
           <g
             className="cursor-pointer group/branch"
@@ -167,10 +167,11 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
               e.stopPropagation();
               onBranchWire?.(midPoint);
             }}
+            title="Branch Wire (+)"
           >
-            <circle cx={0} cy={0} r={12} fill="#10b981" className="group-hover/branch:fill-emerald-600 transition-colors shadow-xl" />
+            <circle cx={-15} cy={0} r={12} fill="#10b981" className="group-hover/branch:fill-emerald-600 transition-colors shadow-xl" />
             <text
-              x={0}
+              x={-15}
               y={4.5}
               textAnchor="middle"
               fill="#ffffff"
@@ -179,6 +180,29 @@ export const WireRenderer: React.FC<WireRendererProps> = ({
               className="pointer-events-none"
             >
               +
+            </text>
+          </g>
+
+          {/* Delete Wire Button (✕) */}
+          <g
+            className="cursor-pointer group/del"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            title="Delete Wire (Del / Backspace)"
+          >
+            <circle cx={15} cy={0} r={12} fill="#ef4444" className="group-hover/del:fill-red-600 transition-colors shadow-xl" />
+            <text
+              x={15}
+              y={4}
+              textAnchor="middle"
+              fill="#ffffff"
+              fontSize={12}
+              fontWeight="bold"
+              className="pointer-events-none"
+            >
+              ✕
             </text>
           </g>
         </g>

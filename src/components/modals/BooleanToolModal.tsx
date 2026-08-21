@@ -3,457 +3,462 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useCircuit } from '../../context/CircuitContext';
 import {
-  parseBooleanExpression,
-  generateTruthTableFromAST,
-  simplifyBooleanExpression,
-  extractVariablesFromAST,
-  LiveTruthTableResult,
-} from '../../engine/booleanParser';
+  parseExpression,
+  simplifyBoolean,
+  SimplificationResult,
+} from '../../engine/boolean';
 import {
-  FileCode2,
   Sparkles,
-  Wand2,
   X,
-  ArrowRight,
   Check,
   AlertCircle,
-  Play,
   Copy,
-  Table,
-  Plus,
-  Layers,
-  HelpCircle,
+  Cpu,
+  Delete,
+  Zap,
+  ShieldCheck,
 } from 'lucide-react';
+
+const QUICK_EXAMPLES = [
+  { label: "X'Y'Z + YZ + XZ", expr: "X'Y'Z + YZ + XZ" },
+  { label: '(XY+Y\'X+YZ\')X\'Y\' + X\'Y\' + YZ\'', expr: '(XY + Y\'X + YZ\') X\'Y\' + X\'Y\' + YZ\'' },
+  { label: '(A+B+C)(A+B\'+C)(A+B+C\')', expr: '(A+B+C)(A+B\'+C)(A+B+C\')' },
+  { label: 'AB + A\'C + BC', expr: 'AB + A\'C + BC' },
+  { label: 'A + AB + A\'B', expr: 'A + AB + A\'B' },
+  { label: 'A(A + B)', expr: 'A(A + B)' },
+  { label: '(A + B)(A + C)', expr: '(A + B)(A + C)' },
+  { label: 'AB + Cin(A ⊕ B)', expr: 'AB + Cin(A ⊕ B)' },
+];
 
 export const BooleanToolModal: React.FC = () => {
   const { activeModal, setActiveModal, synthesizeAndLoadExpression } = useCircuit();
-  const [activeTab, setActiveTab] = useState<'synthesize' | 'simplify'>('synthesize');
 
-  // Synthesizer Live Input State
-  const [expression, setExpression] = useState<string>('(A AND B) OR (NOT C)');
-  const [synthesisMode, setSynthesisMode] = useState<'replace' | 'insert'>('replace');
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [inputEquation, setInputEquation] = useState<string>('(XY + Y\'X + YZ\') X\'Y\' + X\'Y\' + YZ\'');
+  const [copiedResult, setCopiedResult] = useState(false);
+  const [copiedProof, setCopiedProof] = useState(false);
+  const [loadSuccessNotice, setLoadSuccessNotice] = useState<string | null>(null);
 
-  // Simplifier Live Input State
-  const [inputToSimplify, setInputToSimplify] = useState<string>('(A AND B) OR (A AND (NOT B))');
+  const [solvedResult, setSolvedResult] = useState<SimplificationResult | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
 
-  // Real-time parsed AST and Truth Table for Synthesizer Tab
-  const liveSynthesizerAnalysis = useMemo(() => {
-    if (!expression.trim()) {
-      return { isValid: false, error: 'Type a Boolean expression above (e.g. AB + C)', truthTable: null, vars: [] };
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const solveEquation = useCallback((exprToSolve?: string) => {
+    const expr = (exprToSolve !== undefined ? exprToSolve : inputEquation).trim();
+    if (!expr) {
+      setParseError('Please enter a Boolean equation.');
+      setSolvedResult(null);
+      return;
     }
+
     try {
-      const ast = parseBooleanExpression(expression);
-      const truthTable = generateTruthTableFromAST(ast);
-      const vars = extractVariablesFromAST(ast);
-      return { isValid: true, error: null, truthTable, vars, ast };
+      const ast = parseExpression(expr);
+      const simResult = simplifyBoolean(ast);
+      setSolvedResult(simResult);
+      setParseError(null);
     } catch (err: any) {
-      return { isValid: false, error: err.message || 'Syntax error in Boolean expression', truthTable: null, vars: [] };
+      setParseError(err.message || 'Syntax error in Boolean equation.');
+      setSolvedResult(null);
     }
-  }, [expression]);
+  }, [inputEquation]);
 
-  // Real-time simplified result for Simplifier Tab
-  const liveSimplifierAnalysis = useMemo(() => {
-    if (!inputToSimplify.trim()) {
-      return { isValid: false, error: 'Enter a Boolean expression to simplify', result: null };
+  // Solve initial equation on modal open
+  useEffect(() => {
+    if (activeModal === 'boolean') {
+      solveEquation(inputEquation);
     }
-    try {
-      const res = simplifyBooleanExpression(inputToSimplify);
-      return { isValid: true, error: null, result: res };
-    } catch (err: any) {
-      return { isValid: false, error: err.message || 'Syntax error in Boolean expression', result: null };
-    }
-  }, [inputToSimplify]);
+  }, [activeModal]);
 
   if (activeModal !== 'boolean') return null;
 
-  const handleSynthesizeCircuit = () => {
-    if (!liveSynthesizerAnalysis.isValid) return;
-    const res = synthesizeAndLoadExpression(expression, synthesisMode);
+  const handleInsertSymbol = (sym: string) => {
+    const el = inputRef.current;
+    if (!el) {
+      const next = inputEquation + sym;
+      setInputEquation(next);
+      solveEquation(next);
+      return;
+    }
+
+    const start = el.selectionStart ?? inputEquation.length;
+    const end = el.selectionEnd ?? inputEquation.length;
+    const prev = inputEquation;
+
+    const nextVal = prev.substring(0, start) + sym + prev.substring(end);
+    setInputEquation(nextVal);
+    solveEquation(nextVal);
+
+    setTimeout(() => {
+      el.focus();
+      const newPos = start + sym.length;
+      el.setSelectionRange(newPos, newPos);
+    }, 10);
+  };
+
+  const handleBackspace = () => {
+    const el = inputRef.current;
+    if (!el) {
+      const next = inputEquation.slice(0, -1);
+      setInputEquation(next);
+      if (next.trim()) solveEquation(next);
+      else setSolvedResult(null);
+      return;
+    }
+
+    const start = el.selectionStart ?? inputEquation.length;
+    const end = el.selectionEnd ?? inputEquation.length;
+
+    let nextVal = '';
+    let newPos = start;
+
+    if (start === end) {
+      if (start > 0) {
+        nextVal = inputEquation.substring(0, start - 1) + inputEquation.substring(end);
+        newPos = start - 1;
+      } else {
+        return;
+      }
+    } else {
+      nextVal = inputEquation.substring(0, start) + inputEquation.substring(end);
+      newPos = start;
+    }
+
+    setInputEquation(nextVal);
+    if (nextVal.trim()) solveEquation(nextVal);
+    else setSolvedResult(null);
+
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(newPos, newPos);
+    }, 10);
+  };
+
+  const handleClear = () => {
+    setInputEquation('');
+    setSolvedResult(null);
+    setParseError(null);
+    if (inputRef.current) inputRef.current.focus();
+  };
+
+  const handleCopyResult = () => {
+    if (!solvedResult) return;
+    navigator.clipboard.writeText(solvedResult.simplifiedExpression);
+    setCopiedResult(true);
+    setTimeout(() => setCopiedResult(false), 2000);
+  };
+
+  const handleCopyProof = () => {
+    if (!solvedResult) return;
+    const proofText = solvedResult.steps
+      .map((s) => `Step ${s.stepNumber}: ${s.expression}  [${s.lawName}]`)
+      .join('\n');
+    navigator.clipboard.writeText(proofText);
+    setCopiedProof(true);
+    setTimeout(() => setCopiedProof(false), 2000);
+  };
+
+  const handleSynthesizeOriginal = () => {
+    const exprToUse = inputEquation.trim();
+    if (!exprToUse) return;
+    const res = synthesizeAndLoadExpression(exprToUse, 'replace');
     if (res.success) {
-      setSuccessMsg(`Synthesized & loaded circuit for "${expression}"!`);
+      setLoadSuccessNotice(`Original circuit generated on canvas for "${exprToUse}"`);
       setTimeout(() => {
-        setSuccessMsg(null);
+        setLoadSuccessNotice(null);
         setActiveModal('none');
-      }, 1000);
+      }, 700);
+    } else {
+      setParseError(res.error || 'Failed to synthesize original circuit.');
     }
   };
 
-  const insertSymbol = (sym: string, target: 'synthesize' | 'simplify') => {
-    if (target === 'synthesize') {
-      setExpression((prev) => prev + (prev.endsWith(' ') || prev === '' ? sym : ` ${sym}`));
+  const handleSynthesizeSimplified = () => {
+    if (!solvedResult) return;
+    const exprToUse = solvedResult.simplifiedExpression || inputEquation;
+    const res = synthesizeAndLoadExpression(exprToUse, 'replace');
+    if (res.success) {
+      setLoadSuccessNotice(`Simplified circuit generated on canvas for "${exprToUse}"`);
+      setTimeout(() => {
+        setLoadSuccessNotice(null);
+        setActiveModal('none');
+      }, 700);
     } else {
-      setInputToSimplify((prev) => prev + (prev.endsWith(' ') || prev === '' ? sym : ` ${sym}`));
+      setParseError(res.error || 'Failed to synthesize simplified circuit.');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-2.5 sm:p-4 animate-fade-in">
-      <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-fade-in select-none overflow-y-auto">
+      <div className="bg-[#0b1324] border border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden transition-all duration-300">
+        
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/80 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-xl shadow-sm">
-              <FileCode2 className="w-5 h-5" />
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-slate-800 bg-[#0d162a] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-lg">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <h2 className="font-bold text-slate-100 text-sm sm:text-base flex items-center gap-2">
-                Live Boolean Solver & Circuit Synthesizer
+                <span>Advanced Boolean Algebra Solver</span>
               </h2>
-              <p className="text-xs text-slate-400">
-                Type equations to synthesize interactive gates, truth tables, and step-by-step simplification
+              <p className="text-[11px] text-slate-400">
+                Rigorous step-by-step algebraic proof &amp; logic simplification
               </p>
             </div>
           </div>
+
           <button
             onClick={() => setActiveModal('none')}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            title="Close"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tab Selector */}
-        <div className="flex border-b border-slate-800 px-5 pt-3 gap-4 text-xs font-semibold shrink-0 bg-slate-900/40">
-          <button
-            onClick={() => setActiveTab('synthesize')}
-            className={`pb-2.5 border-b-2 transition-colors flex items-center gap-1.5 ${
-              activeTab === 'synthesize'
-                ? 'border-cyan-400 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Wand2 className="w-3.5 h-3.5" />
-            <span>Real-time Circuit Synthesizer</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('simplify')}
-            className={`pb-2.5 border-b-2 transition-colors flex items-center gap-1.5 ${
-              activeTab === 'simplify'
-                ? 'border-cyan-400 text-cyan-400'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Step-by-Step Algebraic Solver</span>
-          </button>
-        </div>
+        {/* Modal Main Content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+          
+          {/* Input Box */}
+          <div className="space-y-1.5">
+            <div className="relative flex items-center">
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputEquation}
+                onChange={(e) => {
+                  setInputEquation(e.target.value);
+                  solveEquation(e.target.value);
+                }}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="characters"
+                spellCheck={false}
+                placeholder="Enter equation, e.g. (XY + Y'X + YZ') X'Y' + X'Y' + YZ'"
+                className={`w-full px-4 py-3 bg-slate-950 border rounded-xl text-slate-100 font-mono text-base sm:text-lg focus:outline-none transition-colors shadow-inner ${
+                  parseError ? 'border-rose-500/60 focus:border-rose-400' : 'border-cyan-500/50 focus:border-cyan-400'
+                }`}
+              />
+              {inputEquation && (
+                <button
+                  onClick={handleClear}
+                  className="absolute right-3 p-1.5 text-slate-400 hover:text-slate-200 rounded-lg"
+                  title="Clear input"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
-          {activeTab === 'synthesize' ? (
+            {/* Parse error if any */}
+            {parseError && (
+              <div className="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-xs flex items-center gap-2 font-mono">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{parseError}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Touch-friendly Keypad & Quick Examples */}
+          <div className="p-3 bg-slate-900/90 border border-slate-800/90 rounded-xl space-y-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Variables */}
+              <span className="text-[10px] uppercase font-bold text-slate-400 mr-1 tracking-wider">Vars:</span>
+              {['A', 'B', 'C', 'D', 'X', 'Y', 'Z'].map((v) => (
+                <button
+                  key={v}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleInsertSymbol(v)}
+                  className="min-h-[40px] px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-cyan-500 text-cyan-300 active:text-slate-950 font-mono text-sm font-bold border border-slate-700 transition-colors shadow-sm cursor-pointer"
+                >
+                  {v}
+                </button>
+              ))}
+
+              <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block" />
+
+              {/* Operators */}
+              <span className="text-[10px] uppercase font-bold text-slate-400 mr-1 tracking-wider">Ops:</span>
+              {[
+                { label: "' (NOT)", sym: "'" },
+                { label: '+ (OR)', sym: ' + ' },
+                { label: '· (AND)', sym: ' · ' },
+                { label: '(', sym: '(' },
+                { label: ')', sym: ')' },
+                { label: '⊕ (XOR)', sym: ' ⊕ ' },
+                { label: '⊙ (XNOR)', sym: ' ⊙ ' },
+                { label: '0', sym: '0' },
+                { label: '1', sym: '1' },
+              ].map((op) => (
+                <button
+                  key={op.label}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleInsertSymbol(op.sym)}
+                  className="min-h-[40px] px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-cyan-500 text-slate-200 active:text-slate-950 font-mono text-xs sm:text-sm font-bold border border-slate-700 transition-colors shadow-sm cursor-pointer"
+                >
+                  {op.label}
+                </button>
+              ))}
+
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleBackspace}
+                className="min-h-[40px] px-3.5 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 font-semibold border border-rose-800/40 transition-colors flex items-center gap-1.5 text-xs cursor-pointer ml-auto"
+                title="Backspace"
+              >
+                <Delete className="w-4 h-4" />
+                <span>Delete</span>
+              </button>
+            </div>
+
+            {/* Quick examples */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800 text-[11px]">
+              <span className="text-slate-400 font-bold mr-1">Quick Examples:</span>
+              {QUICK_EXAMPLES.map((ex) => (
+                <button
+                  key={ex.label}
+                  onClick={() => {
+                    setInputEquation(ex.expr);
+                    solveEquation(ex.expr);
+                  }}
+                  className="px-2.5 py-1 rounded-md bg-slate-800/80 hover:bg-cyan-950 hover:text-cyan-300 hover:border-cyan-500/40 border border-slate-700 text-slate-300 transition-all font-mono"
+                >
+                  {ex.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Disclaimer & Accuracy Notice */}
+          <div className="px-3.5 py-2 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-2.5 text-[11px] text-amber-300">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong>Note:</strong> Algorithmic step derivations can make mistakes. Always double check your answers and verify proofs for academic exams.
+            </span>
+          </div>
+
+          {/* Solved Result Card & Step-by-Step Derivation */}
+          {solvedResult && (
             <div className="space-y-4">
-              {/* Input Area */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-slate-200 font-bold flex items-center gap-1.5">
-                    <span>Boolean Expression:</span>
-                    {liveSynthesizerAnalysis.isValid ? (
-                      <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                        <Check className="w-3 h-3" /> Valid Expression
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[10px] text-rose-400 bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 rounded-full">
-                        <AlertCircle className="w-3 h-3" /> Syntax Alert
-                      </span>
-                    )}
-                  </label>
-                  <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
-                    Auto-evaluates as you type
+              {/* Final Result Card */}
+              <div className="p-4 bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-slate-900 border border-cyan-500/40 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                <div>
+                  <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Simplest Minimal Form:</span>
+                  </span>
+                  <div className="text-lg sm:text-2xl font-bold font-mono text-cyan-200 mt-1">
+                    Y = {solvedResult.simplifiedExpression}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleCopyResult}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    {copiedResult ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                    <span>{copiedResult ? 'Copied' : 'Copy Result'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleCopyProof}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    {copiedProof ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                    <span>{copiedProof ? 'Copied Proof' : 'Copy All Steps'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Step-by-Step Derivation Proof */}
+              <div className="p-4 bg-slate-900/90 border border-slate-800 rounded-xl space-y-3 shadow-sm">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <span className="font-bold text-slate-200 text-xs sm:text-sm flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <span>Step-by-Step Algebraic Derivation</span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
+                    {solvedResult.steps.length} Steps
                   </span>
                 </div>
 
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={expression}
-                    onChange={(e) => setExpression(e.target.value)}
-                    placeholder="e.g. (A AND B) OR (NOT C) or AB + C'"
-                    autoFocus
-                    className={`w-full px-4 py-3 bg-slate-900 border rounded-xl text-slate-100 font-mono text-sm sm:text-base focus:outline-none transition-colors shadow-inner ${
-                      liveSynthesizerAnalysis.isValid
-                        ? 'border-cyan-500/60 focus:border-cyan-400'
-                        : 'border-rose-500/60 focus:border-rose-400'
-                    }`}
-                  />
-                  {expression && (
-                    <button
-                      onClick={() => setExpression('')}
-                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-300"
+                <div className="space-y-2.5 font-mono">
+                  {solvedResult.steps.map((step, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+                        idx === solvedResult.steps.length - 1
+                          ? 'bg-emerald-950/30 border-emerald-500/50 text-emerald-300'
+                          : 'bg-slate-950/80 border-slate-800/90 text-slate-200'
+                      }`}
                     >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Error message indicator */}
-                {liveSynthesizerAnalysis.error && (
-                  <p className="text-[11px] text-rose-400 flex items-center gap-1 font-mono">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                    {liveSynthesizerAnalysis.error}
-                  </p>
-                )}
-
-                {/* Quick Touch Keypad for Tablet & Mobile Users */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] text-slate-400 font-medium mr-1">Insert:</span>
-                  {['AND', 'OR', 'NOT', 'XOR', 'NAND', 'NOR', '(', ')', "’", 'A', 'B', 'C', 'D'].map(
-                    (sym) => (
-                      <button
-                        key={sym}
-                        onClick={() => insertSymbol(sym, 'synthesize')}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-cyan-500/30 text-slate-200 font-mono text-xs font-semibold border border-slate-700/60 transition-colors"
-                      >
-                        {sym}
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-
-              {/* Presets List */}
-              <div className="p-3 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-                <span className="text-[11px] text-slate-400 font-semibold block">
-                  Quick Architecture Presets:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { label: 'Half Adder Sum', expr: 'A XOR B' },
-                    { label: 'Full Adder Carry', expr: '(A AND B) OR (Cin AND (A XOR B))' },
-                    { label: '2:1 Mux', expr: '(A AND (NOT S)) OR (B AND S)' },
-                    { label: 'Majority (3-input)', expr: '(A AND B) OR (B AND C) OR (A AND C)' },
-                    { label: 'De Morgan NAND', expr: 'NOT (A AND B)' },
-                    { label: 'XOR from Basic Gates', expr: '(A AND (NOT B)) OR ((NOT A) AND B)' },
-                  ].map((pre) => (
-                    <button
-                      key={pre.label}
-                      onClick={() => setExpression(pre.expr)}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-cyan-950/40 hover:text-cyan-300 hover:border-cyan-500/40 border border-slate-700/60 text-[11px] text-slate-300 font-medium transition-all"
-                    >
-                      {pre.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Live Truth Table & Analysis Results Preview */}
-              {liveSynthesizerAnalysis.isValid && liveSynthesizerAnalysis.truthTable && (
-                <div className="space-y-3 p-4 bg-slate-900/70 border border-slate-800 rounded-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <Table className="w-4 h-4 text-cyan-400" />
-                      <span className="font-bold text-slate-200 text-xs">Live Generated Truth Table</span>
-                      <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 text-[10px] font-mono">
-                        {liveSynthesizerAnalysis.vars.length} Variables ({Math.pow(2, liveSynthesizerAnalysis.vars.length)} Combinations)
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Truth Table Grid */}
-                  <div className="max-h-48 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950/60">
-                    <table className="w-full text-left font-mono text-[11px]">
-                      <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-slate-400">
-                        <tr>
-                          <th className="py-1.5 px-3">#</th>
-                          {liveSynthesizerAnalysis.vars.map((v) => (
-                            <th key={v} className="py-1.5 px-3 text-cyan-400 font-bold">
-                              {v}
-                            </th>
-                          ))}
-                          <th className="py-1.5 px-3 text-emerald-400 font-bold bg-emerald-950/20">
-                            Output (Y)
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                        {liveSynthesizerAnalysis.truthTable.rows.map((row) => (
-                          <tr
-                            key={row.index}
-                            className={`hover:bg-slate-800/40 transition-colors ${
-                              row.output === 1 ? 'bg-emerald-500/5' : ''
-                            }`}
-                          >
-                            <td className="py-1 px-3 text-slate-500">{row.minterm}</td>
-                            {liveSynthesizerAnalysis.vars.map((v) => (
-                              <td key={v} className="py-1 px-3 font-bold">
-                                {row.inputs[v]}
-                              </td>
-                            ))}
-                            <td
-                              className={`py-1 px-3 font-bold ${
-                                row.output === 1 ? 'text-emerald-400 bg-emerald-950/20' : 'text-slate-400'
-                              }`}
-                            >
-                              {row.output}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Canonical Min-term & Max-term forms */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-mono">
-                    <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg">
-                      <span className="text-slate-400 block text-[10px] uppercase font-sans font-bold">
-                        Canonical SOP (∑ m):
-                      </span>
-                      <span className="text-emerald-400 font-semibold truncate block mt-0.5">
-                        {liveSynthesizerAnalysis.truthTable.sopExpression}
-                      </span>
-                    </div>
-                    <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg">
-                      <span className="text-slate-400 block text-[10px] uppercase font-sans font-bold">
-                        Canonical POS (∏ M):
-                      </span>
-                      <span className="text-cyan-400 font-semibold truncate block mt-0.5">
-                        {liveSynthesizerAnalysis.truthTable.posExpression}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Step-by-Step Algebraic Simplifier Tab */
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-slate-200 font-bold block">
-                  Expression to Simplify / Prove:
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={inputToSimplify}
-                    onChange={(e) => setInputToSimplify(e.target.value)}
-                    placeholder="e.g. (A AND B) OR (A AND (NOT B))"
-                    className="w-full px-4 py-3 bg-slate-900 border border-cyan-500/60 rounded-xl text-slate-100 font-mono text-sm sm:text-base focus:outline-none focus:border-cyan-400 shadow-inner"
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] text-slate-400 font-medium mr-1">Insert:</span>
-                  {['AND', 'OR', 'NOT', 'XOR', '(', ')', "’", 'A', 'B', 'C'].map((sym) => (
-                    <button
-                      key={sym}
-                      onClick={() => insertSymbol(sym, 'simplify')}
-                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs font-semibold border border-slate-700/60 transition-colors"
-                    >
-                      {sym}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Simplification Steps Display */}
-              {liveSimplifierAnalysis.isValid && liveSimplifierAnalysis.result && (
-                <div className="space-y-3 p-4 bg-slate-900/70 border border-slate-800 rounded-xl">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="font-bold text-slate-200 text-xs">
-                      Step-by-Step Boolean Derivation
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs">
-                      Simplified: {liveSimplifierAnalysis.result.simplified}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {liveSimplifierAnalysis.result.steps.map((step, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-lg bg-slate-950/70 border border-slate-800/80 space-y-1"
-                      >
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-cyan-400 flex items-center gap-1.5">
-                            <span className="w-4 h-4 rounded-full bg-cyan-500/20 flex items-center justify-center text-[10px]">
-                              {idx + 1}
-                            </span>
-                            {step.rule}
-                          </span>
-                          <span className="font-mono text-slate-200 font-semibold px-2 py-0.5 bg-slate-900 rounded border border-slate-800">
-                            {step.expression}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 pl-5.5">{step.explanation}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-6 h-6 rounded-full bg-slate-800 text-cyan-400 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-700">
+                          {idx + 1}
+                        </span>
+                        <span className="font-bold text-sm sm:text-base break-all">
+                          = {step.expression}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="text-left sm:text-right font-sans shrink-0">
+                        <span className="inline-block px-3 py-1 rounded-lg bg-slate-800/90 text-cyan-300 border border-slate-700/80 text-xs font-semibold shadow-sm">
+                          {step.lawName}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
+            </div>
+          )}
+
+          {loadSuccessNotice && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-xs font-semibold flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              <span>{loadSuccessNotice}</span>
             </div>
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 bg-slate-900/95 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {activeTab === 'synthesize' && (
-              <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px]">
-                <button
-                  onClick={() => setSynthesisMode('replace')}
-                  className={`px-2.5 py-1 rounded font-semibold transition-colors ${
-                    synthesisMode === 'replace'
-                      ? 'bg-slate-800 text-cyan-400'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Replace Canvas
-                </button>
-                <button
-                  onClick={() => setSynthesisMode('insert')}
-                  className={`px-2.5 py-1 rounded font-semibold transition-colors ${
-                    synthesisMode === 'insert'
-                      ? 'bg-slate-800 text-cyan-400'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  Insert / Append
-                </button>
-              </div>
-            )}
-            {successMsg && (
-              <span className="text-emerald-400 font-semibold text-xs flex items-center gap-1">
-                <Check className="w-4 h-4" /> {successMsg}
-              </span>
-            )}
-          </div>
+        {/* Footer: Prominent Actions */}
+        <div className="px-4 sm:px-6 py-3.5 bg-[#0d162a] border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+          <button
+            onClick={() => setActiveModal('none')}
+            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-300 font-bold transition-colors cursor-pointer"
+          >
+            Close
+          </button>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Option 1: Synthesize Original Equation */}
             <button
-              onClick={() => setActiveModal('none')}
-              className="px-4 py-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 font-semibold text-xs transition-colors"
+              onClick={handleSynthesizeOriginal}
+              disabled={!inputEquation.trim() || !!parseError}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-600 hover:border-slate-500 disabled:opacity-40 text-slate-100 font-bold text-xs sm:text-sm transition-all shadow-sm cursor-pointer"
+              title="Synthesize unreduced original equation onto the canvas"
             >
-              Cancel
+              <Cpu className="w-4 h-4 text-cyan-400" />
+              <span>Synthesize Original (OG)</span>
             </button>
 
-            {activeTab === 'synthesize' ? (
-              <button
-                onClick={handleSynthesizeCircuit}
-                disabled={!liveSynthesizerAnalysis.isValid}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-40 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-950/50"
-              >
-                <Wand2 className="w-4 h-4" />
-                <span>Synthesize & Load Circuit</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  if (liveSimplifierAnalysis.result) {
-                    setExpression(liveSimplifierAnalysis.result.simplified);
-                    setActiveTab('synthesize');
-                  }
-                }}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all"
-              >
-                <ArrowRight className="w-4 h-4" />
-                <span>Use in Synthesizer</span>
-              </button>
-            )}
+            {/* Option 2: Synthesize Simplified Equation */}
+            <button
+              onClick={handleSynthesizeSimplified}
+              disabled={!solvedResult}
+              className="flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 active:from-cyan-600 active:to-emerald-600 disabled:opacity-40 text-slate-950 font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer"
+              title="Synthesize minimal simplified equation onto the canvas"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950" />
+              <span>Synthesize Simplified</span>
+            </button>
           </div>
         </div>
+
       </div>
     </div>
   );

@@ -535,26 +535,6 @@ export const Inspector: React.FC = () => {
       <div className="flex-1 overflow-y-auto pt-2 pb-2 space-y-3 min-h-0 touch-auto overscroll-contain">
         {renderContent()}
       </div>
-
-      {/* Embedded Author Credits with Passion & Precision */}
-      <div
-        style={{ backgroundColor: currentTheme.navBg, borderColor: currentTheme.borderTone }}
-        className="p-2.5 border-t text-center space-y-0.5 shrink-0 rounded-lg mt-2"
-      >
-        <div className="text-[11px] text-slate-300 font-semibold leading-snug">
-          Crafted with passion and precision by{' '}
-          <strong style={{ color: currentTheme.primaryColor }} className="font-bold block sm:inline">
-            Devashish and Sriyans
-          </strong>
-        </div>
-        <a
-          href="mailto:sriyansraj02@gmail.com"
-          style={{ color: currentTheme.secondaryColor }}
-          className="text-[10px] hover:underline block font-mono opacity-80"
-        >
-          sriyansraj02@gmail.com
-        </a>
-      </div>
     </aside>
   );
 };

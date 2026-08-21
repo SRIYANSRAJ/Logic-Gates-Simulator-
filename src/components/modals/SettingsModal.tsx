@@ -328,10 +328,7 @@ export const SettingsModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <span>
-            Crafted with passion by <strong className="text-emerald-400">Devashish and Sriyans</strong>
-          </span>
+        <div className="p-4 bg-slate-900/90 border-t border-slate-800 flex items-center justify-end text-xs text-slate-400">
           <button
             onClick={() => setActiveModal('none')}
             className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg transition-colors shadow-sm"

@@ -691,20 +691,6 @@ export const Toolbar: React.FC = () => {
                 <HelpCircle className="w-4 h-4 text-slate-400" />
                 <span>Keyboard Shortcuts & Touch Gestures</span>
               </button>
-
-              {/* Author Credits in Dropdown */}
-              <div className="h-px bg-slate-800 my-1" />
-              <div className="p-2 bg-slate-950/80 rounded-lg text-[10px] text-slate-400 space-y-0.5 border border-slate-800">
-                <div className="text-slate-300 font-semibold">
-                  Crafted with passion and precision by Devashish and Sriyans
-                </div>
-                <a
-                  href="mailto:sriyansraj02@gmail.com"
-                  className="text-emerald-400 hover:underline block font-mono"
-                >
-                  sriyansraj02@gmail.com
-                </a>
-              </div>
             </div>
           )}
         </div>

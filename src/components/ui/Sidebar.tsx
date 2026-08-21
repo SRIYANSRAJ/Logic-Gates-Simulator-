@@ -732,26 +732,6 @@ export const Sidebar: React.FC = () => {
           })
         )}
       </div>
-
-      {/* Embedded Author Credits with Passion & Precision */}
-      <div
-        style={{ backgroundColor: activeTheme.navBg, borderColor: activeTheme.borderTone }}
-        className="p-2.5 border-t text-center space-y-0.5 shrink-0"
-      >
-        <div className="text-[11px] text-slate-300 font-semibold leading-snug">
-          Crafted with passion and precision by{' '}
-          <strong style={{ color: activeTheme.primaryColor }} className="font-bold block sm:inline">
-            Devashish and Sriyans
-          </strong>
-        </div>
-        <a
-          href="mailto:sriyansraj02@gmail.com"
-          style={{ color: activeTheme.secondaryColor }}
-          className="text-[10px] hover:underline block font-mono opacity-80"
-        >
-          sriyansraj02@gmail.com
-        </a>
-      </div>
     </aside>
   );
 };

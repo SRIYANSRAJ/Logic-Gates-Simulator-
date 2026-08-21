@@ -190,6 +190,8 @@ export function evaluateComponent(
       const d0 = toNum(inputs['in_0']);
       const value = (d3 << 3) | (d2 << 2) | (d1 << 1) | d0;
       nextState.numericValue = value;
+      nextState.hexValue = value.toString(16).toUpperCase();
+      nextState.decValue = value.toString(10);
       nextState.bits = [d3, d2, d1, d0];
       break;
     }
